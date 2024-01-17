@@ -12,11 +12,11 @@ def load_data():
     # Load CSV file into a DataFrame
 
     df1 = read_csv('benchmark/data/train_set.csv',
-                   sep=',', names=['from', 'rel', 'to'])
+                   sep=',', header=None, names=['from', 'rel', 'to'])
     df2 = read_csv('benchmark/data/val_set.csv',
-                   sep=',', names=['from', 'rel', 'to'])
+                   sep=',', header=None, names=['from', 'rel', 'to'])
     df3 = read_csv('benchmark/data/test_set.csv',
-                   sep=',', names=['from', 'rel', 'to'])
+                   sep=',', header=None, names=['from', 'rel', 'to'])
     df = concat([df1, df2, df3])
     kg = KnowledgeGraph(df)
 

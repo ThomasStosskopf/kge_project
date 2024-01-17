@@ -126,9 +126,9 @@ class PrepareData:
         train_data, val_data, test_data = self.create_dataframes(train_data_dict, val_data_dict, test_data_dict)
         print("train_set head : \n", train_data.head())
 
-        train_data.to_csv('benchmark/data/train_set.csv', index=True, columns=['from', 'rel', 'to'])
-        val_data.to_csv('benchmark/data/val_set.csv', index=False, columns=['from', 'rel', 'to'])
-        test_data.to_csv('benchmark/data/test_set.csv', index=False, columns=['from', 'rel', 'to'])
+        train_data.to_csv('benchmark/data/train_set.csv', index=False, header=False)
+        val_data.to_csv('benchmark/data/val_set.csv', index=False, header=False)
+        test_data.to_csv('benchmark/data/test_set.csv', index=False, header=False)
 
 
 if __name__ == "__main__":
