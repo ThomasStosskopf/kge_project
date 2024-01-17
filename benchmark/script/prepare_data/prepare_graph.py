@@ -217,7 +217,7 @@ def main():
     args = parser.parse_args()
 
 
-    graph = pd.read_csv('data/kg_giant_orphanet.csv', dtype={"x_id": str, "y_id": str})
+    graph = pd.read_csv('benchmark/data/kg_giant_orphanet.csv', dtype={"x_id": str, "y_id": str})
 
 
     filter_list = ["contraindication", "drug_drug", "side_effect", "drug_targets", "drug_protein", "drug_effect", "indication", "off-label use", "exposure_protein", "exposure_molfunc", "exposure_cellcomp", "exposure_bioprocess", "exposure_disease", "exposure_exposure", "anatomy_protein_present", "anatomy_protein_absent", "anatomy_anatomy", "protein_present_anatomy", "protein_absent_anatomy"]
@@ -229,8 +229,8 @@ def main():
     print(graph)
 
     # Output
-    node_map_f =  f"data/KG_node_map.txt"
-    mask_f = f"data/KG_edgelist_mask.txt" 
+    node_map_f =  f"benchmark/data/KG_node_map.txt"
+    mask_f = f"benchmark/data/KG_edgelist_mask.txt"
     generate_edgelist(node_map_f, mask_f, graph, triad_closure=args.triad_closure)
 
 

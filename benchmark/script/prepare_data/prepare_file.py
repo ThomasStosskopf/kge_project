@@ -32,11 +32,11 @@ class PrepareData:
         """
         # Load CSV file into a DataFrame
 
-        df1 = read_csv('01-benchmark/01-data/train_set.csv',
+        df1 = read_csv('benchmark/data/train_set.csv',
                        sep=',', names=['from', 'rel', 'to'])
-        df2 = read_csv('01-benchmark/01-data/val_set.csv',
+        df2 = read_csv('benchmark/data/val_set.csv',
                        sep=',', names=['from', 'rel', 'to'])
-        df3 = read_csv('01-benchmark/01-data/test_set.csv',
+        df3 = read_csv('benchmark/data/test_set.csv',
                        sep=',', names=['from', 'rel', 'to'])
         df = concat([df1, df2, df3])
         kg = KnowledgeGraph(df)
@@ -59,7 +59,7 @@ class PrepareData:
         print(relation_dict)
         # Save relation and their index in a csv file
         relation_df = DataFrame(list(relation_dict.items()), columns=['relation', 'index'])
-        relation_df.to_csv("01-benchmark/01-data/relation_id.csv", index=False)
+        relation_df.to_csv("benchmark/data/relation_id.csv", index=False)
 
         df['full_relation'] = df['full_relation'].map(relation_dict)
         return df
@@ -147,13 +147,13 @@ class PrepareData:
         train_data, val_data, test_data = self.create_dataframes(train_data_dict, val_data_dict, test_data_dict)
         print("train_set head : \n", train_data.head())
 
-        train_data.to_csv('01-benchmark/01-data/train_set.csv', index=True, columns=['from', 'rel', 'to'])
-        val_data.to_csv('01-benchmark/01-data/val_set.csv', index=False, columns=['from', 'rel', 'to'])
-        test_data.to_csv('01-benchmark/01-data/test_set.csv', index=False, columns=['from', 'rel', 'to'])
+        train_data.to_csv('benchmark/data/train_set.csv', index=True, columns=['from', 'rel', 'to'])
+        val_data.to_csv('benchmark/data/val_set.csv', index=False, columns=['from', 'rel', 'to'])
+        test_data.to_csv('benchmark/data/test_set.csv', index=False, columns=['from', 'rel', 'to'])
 
 
 if __name__ == "__main__":
-    prepare_data = PrepareData('01-benchmark/01-data/KG_edgelist_mask.txt')
+    prepare_data = PrepareData('benchmark/data/KG_edgelist_mask.txt')
     print(prepare_data.main())
 
     # print(prepare_data.split_kg(kg_df))
