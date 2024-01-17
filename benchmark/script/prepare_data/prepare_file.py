@@ -1,11 +1,9 @@
-
 from pandas import DataFrame, read_csv, concat
 from typing import Tuple
 from torchkge.data_structures import KnowledgeGraph
 
 
-
-class PrepareData():
+class PrepareData:
     """
     A class for preparing and encoding knowledge graph data.
 
@@ -21,10 +19,10 @@ class PrepareData():
     - main: Main method that orchestrates the data preparation process.
     """
 
-    def __init__(self, data_path:str ) -> None:
+    def __init__(self, data_path: str) -> None:
         self.data_path = data_path
 
-    def load_data(self)->Tuple[KnowledgeGraph, KnowledgeGraph, KnowledgeGraph]:
+    def load_data(self):
         """
         Load CSV files into DataFrames and create a KnowledgeGraph.
 
@@ -35,18 +33,17 @@ class PrepareData():
         # Load CSV file into a DataFrame
 
         df1 = read_csv('01-benchmark/01-data/train_set.csv',
-                    sep=',', names=['from', 'rel', 'to'])
+                       sep=',', names=['from', 'rel', 'to'])
         df2 = read_csv('01-benchmark/01-data/val_set.csv',
-                    sep=',', names=['from', 'rel', 'to'])
+                       sep=',', names=['from', 'rel', 'to'])
         df3 = read_csv('01-benchmark/01-data/test_set.csv',
-                    sep=',', names=['from', 'rel', 'to'])
+                       sep=',', names=['from', 'rel', 'to'])
         df = concat([df1, df2, df3])
         kg = KnowledgeGraph(df)
 
         return kg.split_kg(sizes=(len(df1), len(df2), len(df3)))
 
-
-    def encode_relations_and_save(self, path:str)->DataFrame:
+    def encode_relations_and_save(self, path: str) -> DataFrame:
         """
             Encodes relations in a DataFrame, saves the relation-to-index mapping in a CSV file, and returns the updated DataFrame.
 
@@ -58,7 +55,7 @@ class PrepareData():
         """
         df = read_csv(path, sep="\t", low_memory=False)
         relation_dict = {relation: idx for idx, relation in enumerate(set(df['full_relation']))}
-        
+
         print(relation_dict)
         # Save relation and their index in a csv file
         relation_df = DataFrame(list(relation_dict.items()), columns=['relation', 'index'])
@@ -66,9 +63,8 @@ class PrepareData():
 
         df['full_relation'] = df['full_relation'].map(relation_dict)
         return df
-    
 
-    def segment_data_by_mask(self, df:DataFrame)-> Tuple[dict, dict, dict]:
+    def segment_data_by_mask(self, df: DataFrame) -> Tuple[dict, dict, dict]:
         """
         Segments a DataFrame into training, validation, and test sets based on a 'mask' feature.
 
@@ -82,10 +78,10 @@ class PrepareData():
             - val_data_dict: Dictionary containing 'x_idx', 'full_relation', and 'y_idx' for the validation set.
             - test_data_dict: Dictionary containing 'x_idx', 'full_relation', and 'y_idx' for the test set.
         """
-        train_data_dict = {"from":[],"rel":[], "to":[]}
-        val_data_dict = {"from":[],"rel":[], "to":[]}
-        test_data_dict = {"from":[],"rel":[], "to":[]}
-    
+        train_data_dict = {"from": [], "rel": [], "to": []}
+        val_data_dict = {"from": [], "rel": [], "to": []}
+        test_data_dict = {"from": [], "rel": [], "to": []}
+
         for index, row in df.iterrows():
 
             feature = row["mask"]
@@ -94,7 +90,7 @@ class PrepareData():
                 train_data_dict["from"].append(row['x_idx'])
                 train_data_dict["rel"].append(row['full_relation'])
                 train_data_dict["to"].append(row['y_idx'])
-        
+
             elif feature == "val":
                 val_data_dict["from"].append(row['x_idx'])
                 val_data_dict["rel"].append(row['full_relation'])
@@ -107,8 +103,8 @@ class PrepareData():
 
         return train_data_dict, val_data_dict, test_data_dict
 
-
-    def create_dataframes(self, train_data_dict:dict, val_data_dict:dict, test_data_dict:dict)-> Tuple[DataFrame, DataFrame, DataFrame]:
+    def create_dataframes(self, train_data_dict: dict, val_data_dict: dict, test_data_dict: dict) -> Tuple[
+        DataFrame, DataFrame, DataFrame]:
         """
         Encodes relations in the provided data dictionaries and returns DataFrames with encoded relations.
 
@@ -127,8 +123,7 @@ class PrepareData():
 
         return train_data, val_data, test_data
 
-
-    def count_unique_items(self, path:str, column_name: str) -> int:
+    def count_unique_items(self, path: str, column_name: str) -> int:
         """
         Count the number of unique items in a specified column of a DataFrame.
 
@@ -139,32 +134,26 @@ class PrepareData():
         Returns:
         - int: The count of unique items in the specified column.
         """
-        df = read_csv(path, sep="\t", low_memory=False )
+        df = read_csv(path, sep="\t", low_memory=False)
         unique_items_count = df[column_name].nunique()
         return unique_items_count
 
-
-    def main(self)->None:
-        print(f"Number of different relation in the knowledge graph : {self.count_unique_items(self.data_path, 'full_relation')}")
-        train_data_dict, val_data_dict, test_data_dict = self.segment_data_by_mask(self.encode_relations_and_save(self.data_path))
+    def main(self) -> None:
+        print(
+            f"Number of different relation in the knowledge graph : {self.count_unique_items(self.data_path, 'full_relation')}")
+        train_data_dict, val_data_dict, test_data_dict = self.segment_data_by_mask(
+            self.encode_relations_and_save(self.data_path))
         print("\nCreated dictionary : \n - train_data_dict \n - val_data_dict \n - test_data_dict \n")
         train_data, val_data, test_data = self.create_dataframes(train_data_dict, val_data_dict, test_data_dict)
         print("train_set head : \n", train_data.head())
-        
-        train_data.to_csv('01-benchmark/01-data/train_set.csv', index=True,columns=['from', 'rel', 'to'])
-        val_data.to_csv('01-benchmark/01-data/val_set.csv', index = False, columns=['from', 'rel', 'to'])
+
+        train_data.to_csv('01-benchmark/01-data/train_set.csv', index=True, columns=['from', 'rel', 'to'])
+        val_data.to_csv('01-benchmark/01-data/val_set.csv', index=False, columns=['from', 'rel', 'to'])
         test_data.to_csv('01-benchmark/01-data/test_set.csv', index=False, columns=['from', 'rel', 'to'])
-        
-
-
 
 
 if __name__ == "__main__":
-
     prepare_data = PrepareData('01-benchmark/01-data/KG_edgelist_mask.txt')
     print(prepare_data.main())
 
-    #print(prepare_data.split_kg(kg_df))
-
-
-    
+    # print(prepare_data.split_kg(kg_df))
