@@ -217,7 +217,7 @@ def main():
     args = parser.parse_args()
 
 
-    graph = pd.read_csv('benchmark/data/kg_giant_orphanet.csv', dtype={"x_id": str, "y_id": str})
+    graph = pd.read_csv('benchmark/data/kg_10000.csv', dtype={"x_id": str, "y_id": str})
 
 
     filter_list = ["contraindication", "drug_drug", "side_effect", "drug_targets", "drug_protein", "drug_effect", "indication", "off-label use", "exposure_protein", "exposure_molfunc", "exposure_cellcomp", "exposure_bioprocess", "exposure_disease", "exposure_exposure", "anatomy_protein_present", "anatomy_protein_absent", "anatomy_anatomy", "protein_present_anatomy", "protein_absent_anatomy"]
