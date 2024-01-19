@@ -6,7 +6,7 @@ from torchkge.utils import MarginLoss, DataLoader
 from torchkge.evaluation import LinkPredictionEvaluator
 from torchkge.evaluation import TripletClassificationEvaluator
 from tqdm.autonotebook import tqdm
-
+import sys
 
 def load_data():
     """
@@ -26,7 +26,10 @@ def load_data():
                    sep=',', header=None, names=['from', 'rel', 'to'])
     df = concat([df1, df2, df3])
     kg = KnowledgeGraph(df)
-
+    print("number of unique entity in col from df1: ", df1['from'].nunique(),
+          "\n", "number of unique entity in col from df1: ",df1['to'].nunique())
+    print(f"Length df2: {len(df2)}")
+    print(f"Length df3: {len(df3)}")
     return kg.split_kg(sizes=(len(df1), len(df2), len(df3)))
 
 
@@ -105,17 +108,22 @@ class BaseTrain:
                 running_loss += loss.item()
             iterator.set_description(
                 'Epoch {} | mean loss: {:.5f}'.format(epoch + 1, running_loss / len(self.dataloader)))
-        print("done")
         self.model.normalize_parameters()
 
-
-    def eval_link_prediction(self):
+    def eval_link_prediction(self, output_file="benchmark/output/evaluation_results.txt"):
         """
         Evaluate the link prediction performance of the trained TransE model on the test set.
+
+        Parameters:
+        - output_file (str): Nom du fichier dans lequel enregistrer les résultats. Par défaut, "evaluation_results.txt".
         """
-        evaluator = LinkPredictionEvaluator(self.model, self.kg_test)
+        evaluator = LinkPredictionEvaluator(self.model, self.kg_val)
         evaluator.evaluate(b_size=32)
         evaluator.print_results()
+
+        self.print_results_to_file(evaluator, "benchmark/output/eval_results.txt")
+
+
 
     def eval_triplet_classification(self):
         """
@@ -126,3 +134,33 @@ class BaseTrain:
         evaluator.evaluate(b_size=128)
 
         print('Accuracy on test set: {}'.format(evaluator.accuracy(b_size=128)))
+
+    def get_n_entity(self):
+        return self.kg_train.n_ent
+
+    def get_n_rel(self):
+        return self.kg_train.n_rel
+
+    def print_results_to_file(self, evaluator, output_file):
+        """
+        Wrapper function to print evaluation results to a file.
+
+        Parameters:
+        - evaluator: L'évaluateur d'origine
+        - output_file (str): Nom du fichier dans lequel enregistrer les résultats.
+        - k: int or list: k (or list of k) such that hit@k will be printed.
+        - n_digits: int: Number of digits to be printed for hit@k and MRR.
+        """
+        with open(output_file, "a") as file:
+            # Redirection de la sortie vers le fichier
+            original_stdout = sys.stdout
+            sys.stdout = file
+
+            # Appel de la fonction d'origine
+            evaluator.print_results()
+
+            # Restauration de la sortie standard
+            sys.stdout = original_stdout
+
+        print(f"Results have been appended to {output_file}.")
+

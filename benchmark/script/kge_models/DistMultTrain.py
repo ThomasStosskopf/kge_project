@@ -4,7 +4,7 @@ from torchkge.models import DistMultModel
 
 class DistMultTrain(BaseTrain):
     """
-    TransETrain is a class for training the TransE knowledge graph embedding model.
+    DistMultTrain is a class for training the DistMult knowledge graph embedding model.
 
     Parameters:
         emb_dim (int): The dimensionality of the entity and relation embeddings.
