@@ -94,7 +94,7 @@ class BaseTrain:
         for epoch in iterator:
             running_loss = 0.0
             for i, batch in enumerate(self.dataloader):
-                h, t, r = batch[0], batch[1], batch[2]
+                h, t, r = batch[0], batch[1], batch[2]      
                 n_h, n_t = self.sampler.corrupt_batch(h, t, r)
 
                 self.optimizer.zero_grad()

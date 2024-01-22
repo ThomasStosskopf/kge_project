@@ -4,3 +4,6 @@ MRR : 0.004 		 Filt. MRR : 0.004
 Hit@10 : 0.009 		 Filt. Hit@10 : 0.009
 Mean Rank : 2823 	 Filt. Mean Rank : 2820
 MRR : 0.004 		 Filt. MRR : 0.005
+Hit@10 : 0.113 		 Filt. Hit@10 : 0.146
+Mean Rank : 2744 	 Filt. Mean Rank : 2592
+MRR : 0.053 		 Filt. MRR : 0.077
