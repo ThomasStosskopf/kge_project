@@ -1,5 +1,6 @@
-from pandas import DataFrame, read_csv
+from pandas import DataFrame, read_csv, merge, concat
 from typing import Tuple
+import re
 
 
 class PrepareData:
@@ -20,7 +21,6 @@ class PrepareData:
 
     def __init__(self, data_path: str) -> None:
         self.data_path = data_path
-
 
     def encode_relations_and_save(self, path: str) -> DataFrame:
         """
@@ -82,6 +82,12 @@ class PrepareData:
 
         return train_data_dict, val_data_dict, test_data_dict
 
+    def remove_specific_relation(self, df:DataFrame) -> None:
+        motif = r'\W*drug\W*'
+        for index, row in df.iterrows():
+            feature = row["rel"]
+        return None
+
     def create_dataframes(self, train_data_dict: dict, val_data_dict: dict, test_data_dict: dict) -> Tuple[
         DataFrame, DataFrame, DataFrame]:
         """
@@ -117,22 +123,49 @@ class PrepareData:
         unique_items_count = df[column_name].nunique()
         return unique_items_count
 
-    def main(self) -> None:
-        print(
-            f"Number of different relation in the knowledge graph : {self.count_unique_items(self.data_path, 'full_relation')}")
-        train_data_dict, val_data_dict, test_data_dict = self.segment_data_by_mask(
-            self.encode_relations_and_save(self.data_path))
-        print("\nCreated dictionary : \n - train_data_dict \n - val_data_dict \n - test_data_dict \n")
-        train_data, val_data, test_data = self.create_dataframes(train_data_dict, val_data_dict, test_data_dict)
-        print("train_set head : \n", train_data.head())
+    # Fonction pour calculer la proportion de relations inverses
+    def proportion_relations_inverses(self, df_train: DataFrame, df_test: DataFrame, df_val: DataFrame = None) -> Tuple[int, float]:
+        full_train = concat([df_train, df_val], ignore_index=True)
 
-        train_data.to_csv('benchmark/data/train_set.csv', index=False, header=False)
-        val_data.to_csv('benchmark/data/val_set.csv', index=False, header=False)
-        test_data.to_csv('benchmark/data/test_set.csv', index=False, header=False)
+        # Fusion des deux DataFrames sur les colonnes 'from' et 'to'
+        merged_df = merge(full_train, df_test, left_on=['from', 'to'], right_on=['to', 'from'], suffixes=('_train', '_test'))
+        print(merged_df.head())
+        print(merged_df.tail())
+        merged_df.to_csv('benchmark/data/merged_reverse_train_test.csv', index=False, header=True)
+        # Compter le nombre de relations inverses
+        nb_relations_inverses = len(merged_df)
+
+        # Calculer la proportion
+        total_relations = len(full_train) + len(df_test)
+        print(f"Total number of relations: {total_relations}")
+        proportion = round((nb_relations_inverses / len(df_test)) * 100, 2)
+
+        return nb_relations_inverses, proportion
+
+    def main(self) -> None:
+        # print(
+        #     f"Number of different relation in the knowledge graph : {self.count_unique_items(self.data_path, 'full_relation')}")
+        # train_data_dict, val_data_dict, test_data_dict = self.segment_data_by_mask(read_csv(self.data_path, sep="\t",
+        #                                                                                     low_memory=False))
+        # print("\nCreated dictionary : \n - train_data_dict \n - val_data_dict \n - test_data_dict \n")
+        # train_data, val_data, test_data = self.create_dataframes(train_data_dict, val_data_dict, test_data_dict)
+        # print("train_set head : \n", train_data.head())
+
+        train_data_prop = read_csv('benchmark/data/train_set_prop.csv', sep=",", low_memory=False)
+        test_data_prop = read_csv('benchmark/data/test_set_prop.csv', sep=",", low_memory=False)
+        val_data_prop = read_csv('benchmark/data/val_set_prop.csv', sep=",", low_memory=False)
+
+        nb_inverse_rel, proportion = self.proportion_relations_inverses(train_data_prop, test_data_prop, val_data_prop)
+        print(f"Number of reverse relation: {nb_inverse_rel} \nProportion of reverse relation: {proportion}%")
+        # train_data.to_csv('benchmark/data/train_set_prop.csv', index=False, header=True)
+        # val_data.to_csv('benchmark/data/val_set_prop.csv', index=False, header=True)
+        # test_data.to_csv('benchmark/data/test_set_prop.csv', index=False, header=True)
 
 
 if __name__ == "__main__":
     prepare_data = PrepareData('benchmark/data/KG_edgelist_mask.txt')
     print(prepare_data.main())
+
+
 
     # print(prepare_data.split_kg(kg_df))

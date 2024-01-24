@@ -100,17 +100,17 @@ def map_to_LCC(full_graph, giant, nodes, giant_nodes):
     new_nodes = new_nodes.reset_index().drop('index',axis=1).reset_index().rename(columns={'index':'new_node_idx'})
     assert new_nodes.shape[0] == giant.vcount()
     assert len(new_nodes["node_idx"].to_list()) == len(new_nodes["new_node_idx"].to_list())
-    
+
     new_edges = full_graph.query('x_idx in @giant_nodes and y_idx in @giant_nodes').copy()
     new_edges = new_edges.reset_index(drop=True)
     assert new_edges.shape[0] == giant.ecount()
-   
+
     new_kg = pd.merge(new_edges, new_nodes, 'left', left_on='x_idx', right_on='node_idx')
     new_kg = new_kg.rename(columns={'node_id':'new_x_id', 'node_type':'new_x_type', 'node_name':'new_x_name', 'node_source':'new_x_source', 'new_node_idx':'new_x_idx'})
     new_kg = pd.merge(new_kg, new_nodes, 'left', left_on='y_idx', right_on='node_idx')
-    new_kg = new_kg.rename(columns={'node_id':'new_y_id', 'node_type':'new_y_type', 'node_name':'new_y_name', 'node_source':'new_y_source', 'new_node_idx':'new_y_idx'}) 
+    new_kg = new_kg.rename(columns={'node_id':'new_y_id', 'node_type':'new_y_type', 'node_name':'new_y_name', 'node_source':'new_y_source', 'new_node_idx':'new_y_idx'})
     new_kg = new_kg[[c for c in new_kg.columns if "new" in c or "relation" in c]]
-    new_kg = new_kg.rename(columns={k: k.split("new_")[1] for k in new_kg.columns if "new" in k}) 
+    new_kg = new_kg.rename(columns={k: k.split("new_")[1] for k in new_kg.columns if "new" in k})
 
     new_kg = clean_edges(new_kg)
 
@@ -121,7 +121,7 @@ def map_to_LCC(full_graph, giant, nodes, giant_nodes):
 
 def triadic_closure(graph):
     '''
-    'disease_phenotype_positive' & 'disease_protein' -> 'phenotype_protein' 
+    'disease_phenotype_positive' & 'disease_protein' -> 'phenotype_protein'
     '''
     print(f'Before triadic closure - Nodes: {len(pd.concat([graph["x_idx"], graph["y_idx"]]).unique())}')
     print(f'Before triadic closure - Edges: {len(graph["relation"].tolist())}')
@@ -182,7 +182,7 @@ def generate_edgelist(node_map_f, mask_f, graph, triad_closure):
     print("Starting to generate the connected KG")
     giant = get_LCC(edges, nodes)
     giant_nodes = giant.vs['name']
-    new_kg, new_nodes = map_to_LCC(edges, giant, nodes, giant_nodes)
+    new_kg, new_nodes = map_to_LCC(edges, giant, nodes, giant_nodes) # ici elles clean les duplicats
 
     if triad_closure:
         print('Performing triadic closure on P-G-D relationships.')
@@ -192,7 +192,7 @@ def generate_edgelist(node_map_f, mask_f, graph, triad_closure):
     full_graph = split_edges(new_kg)
 ############################################################# WE CAN TRY TO REMOVE THIS LINE
     print("Starting to get reverse edges")
-    full_graph = add_reverse_edges(full_graph)
+    full_graph = add_reverse_edges(full_graph) # en faisant ca elles rajoutent de nouveau des duplicats
 #############################################################
     print("Starting to save final dataframes")
     new_nodes = new_nodes.get(["new_node_idx", "node_id", "node_type", "node_name", "node_source"]).rename(columns={"new_node_idx": "node_idx"})
@@ -220,9 +220,9 @@ def main():
     graph = pd.read_csv('benchmark/data/kg_giant_orphanet.csv', dtype={"x_id": str, "y_id": str})
 
 
-    filter_list = ["contraindication", "drug_drug", "side_effect", "drug_targets", "drug_protein", "drug_effect", "indication", "off-label use", "exposure_protein", "exposure_molfunc", "exposure_cellcomp", "exposure_bioprocess", "exposure_disease", "exposure_exposure", "anatomy_protein_present", "anatomy_protein_absent", "anatomy_anatomy", "protein_present_anatomy", "protein_absent_anatomy"]
-    graph = graph.loc[~graph['relation'].isin(filter_list)]
-    print(graph)
+    # filter_list = ["contraindication", "drug_drug", "side_effect", "drug_targets", "drug_protein", "drug_effect", "indication", "off-label use", "exposure_protein", "exposure_molfunc", "exposure_cellcomp", "exposure_bioprocess", "exposure_disease", "exposure_exposure", "anatomy_protein_present", "anatomy_protein_absent", "anatomy_anatomy", "protein_present_anatomy", "protein_absent_anatomy"]
+    # graph = graph.loc[~graph['relation'].isin(filter_list)]
+    # print(graph)
 
     graph = graph[graph["x_name"] != "missing"]
     graph = graph[graph["y_name"] != "missing"]
