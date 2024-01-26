@@ -123,47 +123,48 @@ class PrepareData:
         unique_items_count = df[column_name].nunique()
         return unique_items_count
 
-    # Fonction pour calculer la proportion de relations inverses
     def proportion_relations_inverses(self, df_train: DataFrame, df_test: DataFrame, df_val: DataFrame = None) -> Tuple[int, float]:
         full_train = concat([df_train, df_val], ignore_index=True)
 
-        # Fusion des deux DataFrames sur les colonnes 'from' et 'to'
+        # Merged dataframes on the columns 'from' and 'to'
         merged_df = merge(full_train, df_test, left_on=['from', 'to'], right_on=['to', 'from'], suffixes=('_train', '_test'))
-        print(merged_df.head())
-        print(merged_df.tail())
-        merged_df.to_csv('benchmark/data/merged_reverse_train_test.csv', index=False, header=True)
-        # Compter le nombre de relations inverses
-        nb_relations_inverses = len(merged_df)
+        # saved the merged dataframe for controls
+        merged_df.to_csv('benchmark/data/merged_reverse_train_test_cor.csv', index=False, header=True)
+        relation_in_test = merged_df["rel_test"]
+        results_filtered = [relation for relation in relation_in_test if "_rev" in relation]
+        # here you got the real number of reverse relations added by the prepare_graph.py script
+        nb_rev_rel_added = len(results_filtered)
 
         # Calculer la proportion
         total_relations = len(full_train) + len(df_test)
         print(f"Total number of relations: {total_relations}")
-        proportion = round((nb_relations_inverses / len(df_test)) * 100, 2)
-
-        return nb_relations_inverses, proportion
+        proportion = round((nb_rev_rel_added / len(df_test)) * 100, 2)
+        # on prend la colonne relation_test, on compte le nombre de lignes dans laquelle on retrouve le '_rev'
+        return len(results_filtered), proportion
 
     def main(self) -> None:
-        # print(
-        #     f"Number of different relation in the knowledge graph : {self.count_unique_items(self.data_path, 'full_relation')}")
-        # train_data_dict, val_data_dict, test_data_dict = self.segment_data_by_mask(read_csv(self.data_path, sep="\t",
-        #                                                                                     low_memory=False))
-        # print("\nCreated dictionary : \n - train_data_dict \n - val_data_dict \n - test_data_dict \n")
-        # train_data, val_data, test_data = self.create_dataframes(train_data_dict, val_data_dict, test_data_dict)
-        # print("train_set head : \n", train_data.head())
+        print(
+            f"Number of different relation in the knowledge graph : {self.count_unique_items(self.data_path, 'full_relation')}")
+        train_data_dict, val_data_dict, test_data_dict = self.segment_data_by_mask(read_csv(self.data_path, sep="\t",
+                                                                                            low_memory=False))
+        print("\nCreated dictionary : \n - train_data_dict \n - val_data_dict \n - test_data_dict \n")
+        train_data, val_data, test_data = self.create_dataframes(train_data_dict, val_data_dict, test_data_dict)
+        print("train_set head : \n", train_data.head())
+        train_data.to_csv('benchmark/data/train_set_cor.csv', index=False, header=True)
+        val_data.to_csv('benchmark/data/val_set_cor.csv', index=False, header=True)
+        test_data.to_csv('benchmark/data/test_set_cor.csv', index=False, header=True)
 
-        train_data_prop = read_csv('benchmark/data/train_set_prop.csv', sep=",", low_memory=False)
-        test_data_prop = read_csv('benchmark/data/test_set_prop.csv', sep=",", low_memory=False)
-        val_data_prop = read_csv('benchmark/data/val_set_prop.csv', sep=",", low_memory=False)
+        # train_data = read_csv('benchmark/data/train_set_cor.csv', sep=",", low_memory=False)
+        # test_data = read_csv('benchmark/data/test_set_cor.csv', sep=",", low_memory=False)
+        # val_data = read_csv('benchmark/data/val_set_cor.csv', sep=",", low_memory=False)
 
-        nb_inverse_rel, proportion = self.proportion_relations_inverses(train_data_prop, test_data_prop, val_data_prop)
-        print(f"Number of reverse relation: {nb_inverse_rel} \nProportion of reverse relation: {proportion}%")
-        # train_data.to_csv('benchmark/data/train_set_prop.csv', index=False, header=True)
-        # val_data.to_csv('benchmark/data/val_set_prop.csv', index=False, header=True)
-        # test_data.to_csv('benchmark/data/test_set_prop.csv', index=False, header=True)
+        nb_inverse_rel, proportion = self.proportion_relations_inverses(train_data, test_data, val_data)
+        print(f"Number of reverse relation added: {nb_inverse_rel} \nProportion of reverse relation in test that got "
+              f"their reverse in train: {proportion}%")
 
 
 if __name__ == "__main__":
-    prepare_data = PrepareData('benchmark/data/KG_edgelist_mask.txt')
+    prepare_data = PrepareData('benchmark/data/KG_edgelist_mask_cor.txt')
     print(prepare_data.main())
 
 

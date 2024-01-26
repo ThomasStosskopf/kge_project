@@ -146,23 +146,57 @@ def triadic_closure(graph):
     return triadic_closure_graph
 
 
+def find_true_reverse(graph: pd.DataFrame) -> pd.DataFrame:
+    # Merge the graph with itself on 'x_idx' and 'y_idx'
+    merged = pd.merge(graph, graph, left_on=['x_idx', 'y_idx', 'relation'], right_on=['y_idx', 'x_idx', 'relation'])
+    # Keep only the rows where 'x_idx_x' equals 'y_idx_y' and 'y_idx_x' equals 'x_idx_y'
+    true_reverse = merged[(merged['x_idx_x'] == merged['y_idx_y']) & (merged['y_idx_x'] == merged['x_idx_y'])]
+    # Split the DataFrame into two based on the column names
+    df_relation = true_reverse["relation"]
+    df_x = true_reverse[[col for col in true_reverse.columns if col.endswith('_x')]]
+    df_y = true_reverse[[col for col in true_reverse.columns if col.endswith('_y')]]
+    # Rename the columns to remove the suffixes for concatenation
+    df_x.columns = df_x.columns.str.rstrip('_x')
+    df_y.columns = df_y.columns.str.rstrip('_y')
+    df_x = pd.concat([df_relation, df_x], axis=1)
+    df_y = pd.concat([df_relation, df_y], axis=1)
+    df_x.columns = ['relation', 'display_relation', 'x_id', 'x_idx', 'x_type', 'x_name',
+                    'x_source', 'y_id', 'y_idx', 'y_type', 'y_name', 'y_source']
+    df_y.columns = ['relation', 'display_relation', 'x_id', 'x_idx', 'x_type', 'x_name',
+                    'x_source', 'y_id', 'y_idx', 'y_type', 'y_name', 'y_source']
+    # Concatenate and reset the index
+    result = pd.concat((df_x, df_y), ignore_index=True).drop_duplicates().reset_index(drop=True)
+    return result
+
+
 def add_reverse_edges(graph):
     print(graph.columns)
-
-    rev_edges = graph[["x_idx", "x_type", "relation", "y_idx", "y_type", "mask"]].copy()
+    true_reverse = find_true_reverse(graph)
+    print("dataframe with only true reverse: \n",true_reverse)
+    print(len(true_reverse))
+    rev_edges = graph[["x_idx", "x_type", "relation", "y_idx", "y_type"]].copy()
     print(rev_edges)
-    rev_edges.columns = ["y_idx", "y_type", "relation", "x_idx", "x_type", "mask"]
-    
+    # Filtrer les arêtes inverses qui existent déjà dans le tableau d'origine
+    existing_reverse_edges = graph[["x_idx", "x_type", "relation", "y_idx", "y_type"]]
+    existing_reverse_edges.columns = ["y_idx", "y_type", "relation", "x_idx", "x_type"]
+
+    rev_edges = rev_edges[~rev_edges.isin(existing_reverse_edges)].dropna()
+    rev_edges.columns = ["y_idx", "y_type", "relation", "x_idx", "x_type"]
+
+
+
     rev_edge_eqtype = rev_edges.query('x_type == y_type')
+    print("REV_EDGE_EQTYPE ??????",rev_edge_eqtype)
+    print(f"Length rev_edges: {len(rev_edges)}")
     rev_edge_eqtype["relation"] = rev_edge_eqtype["relation"] + "_rev"
     rev_edge_neqtype = rev_edges.query('x_type != y_type')
     rev_edges = pd.concat((rev_edge_eqtype, rev_edge_neqtype)).drop_duplicates(ignore_index=True).reset_index()
-    print(rev_edges)
+    print(f"Length rev_edges: {len(rev_edges)}")
 
     print("Forward", graph.shape, "Reverse", rev_edges.shape)
     print("Finished adding reverse edges")
 
-    full_graph = pd.concat((graph[["x_idx", "x_type", "y_idx", "y_type", "relation", "mask"]], rev_edges[["x_idx", "x_type", "y_idx", "y_type", "relation", "mask"]]))#.drop_duplicates(ignore_index=True).reset_index()
+    full_graph = pd.concat((graph[["x_idx", "x_type", "y_idx", "y_type", "relation"]], rev_edges[["x_idx", "x_type", "y_idx", "y_type", "relation"]]))#.drop_duplicates(ignore_index=True).reset_index()
     print(len(full_graph))
     full_graph = full_graph.drop_duplicates(ignore_index=True).reset_index()
     print(full_graph)
@@ -170,6 +204,8 @@ def add_reverse_edges(graph):
     print("Finished concatenating forward and reverse edges")
 
     full_graph["full_relation"] = full_graph["x_type"] + ";" + full_graph["relation"] + ";" + full_graph["y_type"]
+    print("#####################\nFULL GRAPH\n###################")
+    print(full_graph)
     return full_graph
 
 
@@ -188,16 +224,21 @@ def generate_edgelist(node_map_f, mask_f, graph, triad_closure):
         print('Performing triadic closure on P-G-D relationships.')
         new_kg = triadic_closure(new_kg)
 
-    print('Split edges into train/val/test')
-    full_graph = split_edges(new_kg)
+    new_kg.to_csv("benchmark/output/new_kg.csv", sep="\t", index=False)
+    print('Split edges into train/val/test') # remove their splits because you could not remove some duplicats
+    full_graph = new_kg
+    print(full_graph)
 ############################################################# WE CAN TRY TO REMOVE THIS LINE
     print("Starting to get reverse edges")
-    full_graph = add_reverse_edges(full_graph) # en faisant ca elles rajoutent de nouveau des duplicats
+    full_graph = add_reverse_edges(full_graph) # en faisant ca elles rajoutent de nouveaux des duplicats
 #############################################################
     print("Starting to save final dataframes")
     new_nodes = new_nodes.get(["new_node_idx", "node_id", "node_type", "node_name", "node_source"]).rename(columns={"new_node_idx": "node_idx"})
     new_nodes.to_csv(node_map_f, sep="\t", index=False)
-    full_graph = full_graph[["x_idx", "y_idx", "full_relation", "mask"]]
+    full_graph = full_graph[["x_idx", "y_idx", "full_relation"]]
+    full_graph = full_graph.drop_duplicates(ignore_index=True).reset_index(drop=True)
+
+    full_graph = split_edges(full_graph)
     full_graph.to_csv(mask_f, sep="\t", index=False)
 
     print("Final Number of Edges:", len(full_graph["full_relation"].tolist()))
@@ -229,8 +270,8 @@ def main():
     print(graph)
 
     # Output
-    node_map_f =  f"benchmark/data/KG_node_map.txt"
-    mask_f = f"benchmark/data/KG_edgelist_mask.txt"
+    node_map_f =  f"benchmark/data/KG_node_map_cor.txt"
+    mask_f = f"benchmark/data/KG_edgelist_mask_cor.txt"
     generate_edgelist(node_map_f, mask_f, graph, triad_closure=args.triad_closure)
 
 
