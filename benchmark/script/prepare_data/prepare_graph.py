@@ -146,7 +146,30 @@ def triadic_closure(graph):
     return triadic_closure_graph
 
 
-def find_true_reverse(graph: pd.DataFrame) -> pd.DataFrame:
+def find_reciprocal_relationships(graph: pd.DataFrame) -> pd.DataFrame:
+    """
+    Find true reverse relationships in a graph DataFrame.
+
+    This function takes a DataFrame representing a graph with relationships between nodes
+    and finds true reverse relationships, where the relationship between two nodes A and B
+    is reciprocal, meaning that if A is related to B with a certain relation, then B is also
+    related to A with the same relation.
+
+    Parameters:
+    - graph (pd.DataFrame): A DataFrame representing the graph containing relationships
+                            between nodes. It should have columns 'x_idx', 'y_idx', and 'relation'.
+
+    Returns:
+    - pd.DataFrame: A DataFrame containing the true reverse relationships found in the input graph.
+                    It includes columns such as 'relation', 'display_relation', 'x_id', 'x_idx',
+                    'x_type', 'x_name', 'x_source', 'y_id', 'y_idx', 'y_type', 'y_name', and 'y_source'.
+
+    Note:
+    - The function assumes that the input DataFrame 'graph' contains columns 'x_idx', 'y_idx',
+      and 'relation' representing the indices of connected nodes and the relationship between them.
+    - It performs a merge operation on the DataFrame to identify reciprocal relationships,
+      removes duplicates, and restructures the DataFrame for clarity.
+    """
     # Merge the graph with itself on 'x_idx' and 'y_idx'
     merged = pd.merge(graph, graph, left_on=['x_idx', 'y_idx', 'relation'], right_on=['y_idx', 'x_idx', 'relation'])
     # Keep only the rows where 'x_idx_x' equals 'y_idx_y' and 'y_idx_x' equals 'x_idx_y'
@@ -169,43 +192,68 @@ def find_true_reverse(graph: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def add_reverse_edges(graph):
-    print(graph.columns)
-    true_reverse = find_true_reverse(graph)
-    print("dataframe with only true reverse: \n",true_reverse)
-    print(len(true_reverse))
-    rev_edges = graph[["x_idx", "x_type", "relation", "y_idx", "y_type"]].copy()
-    print(rev_edges)
-    # Filtrer les arêtes inverses qui existent déjà dans le tableau d'origine
-    existing_reverse_edges = graph[["x_idx", "x_type", "relation", "y_idx", "y_type"]]
-    existing_reverse_edges.columns = ["y_idx", "y_type", "relation", "x_idx", "x_type"]
+def add_reverse_edges(graph: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds reverse edges to a graph DataFrame.
 
-    rev_edges = rev_edges[~rev_edges.isin(existing_reverse_edges)].dropna()
+    This function takes a DataFrame representing a graph and adds reverse edges to it. Reverse edges
+    are created by identifying reciprocal relationships and appending corresponding reverse relations to
+    the graph. Reverse relations are distinguished by adding a "_rev" suffix to the original relation.
+
+    Parameters:
+    - graph (pd.DataFrame): A DataFrame representing the graph containing relationships between nodes.
+                            It should have columns 'x_idx', 'x_type', 'y_idx', 'y_type', and 'relation'.
+
+    Returns:
+    - pd.DataFrame: A DataFrame containing the original graph along with additional reverse edges.
+                    The DataFrame includes columns 'x_idx', 'x_type', 'y_idx', 'y_type', 'relation',
+                    and 'full_relation'. The 'full_relation' column concatenates the types and relations
+                    of nodes and edges for further analysis.
+
+    Note:
+    - The function utilizes the 'find_reciprocal_relationships' function to identify reciprocal relationships
+      and creates reverse edges accordingly.
+    - It saves intermediate results and final output to CSV files for benchmarking purposes.
+    - Reverse edges are created by appending reverse relations to the original graph. If nodes have different
+      types, their reverse relations are distinguished by adding a "_rev" suffix to the original relation.
+    - The resulting DataFrame includes both the original graph and the newly added reverse edges.
+    - The 'full_relation' column concatenates the types and relations of nodes and edges for comprehensive
+      analysis and understanding of relationships in the graph.
+    """
+    print(graph.columns)
+    true_reverse = find_reciprocal_relationships(graph)
+
+    rev_edges = graph[["x_idx", "x_type", "relation", "y_idx", "y_type"]].copy()
+
+    reverse_relations = true_reverse[["x_idx", "x_type", "relation", "y_idx", "y_type"]].copy()
+
+    # Comparez les lignes entre les deux DataFrames en utilisant merge avec l'option indicator=True
+    merged = rev_edges.merge(reverse_relations, how='left', indicator=True)
+    merged.to_csv("benchmark/output/nerged.csv", sep="\t", index=False)
+
+    # Sélectionnez les lignes qui ne sont présentes que dans tableau_1
+    rev_edges_wo_true_rev = merged[merged['_merge'] == 'left_only']
+    rev_edges_wo_true_rev.to_csv("benchmark/output/tableau_1_unique.csv", sep="\t", index=False)
+
+    # Supprimez la colonne '_merge' qui a été ajoutée par merge
+    rev_edges_wo_true_rev = rev_edges_wo_true_rev.drop(columns=['_merge'])
+
+    rev_edges = rev_edges_wo_true_rev
     rev_edges.columns = ["y_idx", "y_type", "relation", "x_idx", "x_type"]
 
-
-
     rev_edge_eqtype = rev_edges.query('x_type == y_type')
-    print("REV_EDGE_EQTYPE ??????",rev_edge_eqtype)
-    print(f"Length rev_edges: {len(rev_edges)}")
+
     rev_edge_eqtype["relation"] = rev_edge_eqtype["relation"] + "_rev"
     rev_edge_neqtype = rev_edges.query('x_type != y_type')
     rev_edges = pd.concat((rev_edge_eqtype, rev_edge_neqtype)).drop_duplicates(ignore_index=True).reset_index()
-    print(f"Length rev_edges: {len(rev_edges)}")
-
-    print("Forward", graph.shape, "Reverse", rev_edges.shape)
-    print("Finished adding reverse edges")
 
     full_graph = pd.concat((graph[["x_idx", "x_type", "y_idx", "y_type", "relation"]], rev_edges[["x_idx", "x_type", "y_idx", "y_type", "relation"]]))#.drop_duplicates(ignore_index=True).reset_index()
-    print(len(full_graph))
+
+
     full_graph = full_graph.drop_duplicates(ignore_index=True).reset_index()
-    print(full_graph)
-    print(len(full_graph))
-    print("Finished concatenating forward and reverse edges")
 
     full_graph["full_relation"] = full_graph["x_type"] + ";" + full_graph["relation"] + ";" + full_graph["y_type"]
-    print("#####################\nFULL GRAPH\n###################")
-    print(full_graph)
+
     return full_graph
 
 
@@ -225,7 +273,6 @@ def generate_edgelist(node_map_f, mask_f, graph, triad_closure):
         new_kg = triadic_closure(new_kg)
 
     new_kg.to_csv("benchmark/output/new_kg.csv", sep="\t", index=False)
-    print('Split edges into train/val/test') # remove their splits because you could not remove some duplicats
     full_graph = new_kg
     print(full_graph)
 ############################################################# WE CAN TRY TO REMOVE THIS LINE
