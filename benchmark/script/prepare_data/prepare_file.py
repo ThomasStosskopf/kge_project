@@ -1,6 +1,6 @@
 from pandas import DataFrame, read_csv, merge, concat
 from typing import Tuple
-
+from sklearn.model_selection import train_test_split
 
 class PrepareData:
     """
@@ -81,14 +81,36 @@ class PrepareData:
 
         return train_data_dict, val_data_dict, test_data_dict
 
-    def remove_specific_relation(self, df:DataFrame) -> None:
-        motif = r'\W*drug\W*'
-        for index, row in df.iterrows():
-            feature = row["rel"]
-        return None
+    def remove_mask_col(self, kg_df : DataFrame) -> DataFrame:
+        kg_without_mask_col = kg_df[["x_idx", "y_idx", "full_relation"]].copy()
+        return kg_without_mask_col
+
+    def remove_specific_relation(self, df: DataFrame, column: str, relation_to_remove: str) -> DataFrame:
+        filtered_df = df[~(df[column].str.contains(relation_to_remove))]
+        return filtered_df
+
+    def split_in_train_test_set(self, main_df, filtered_df, test_size=0.2, val_size=0.1, random_state=None):
+        # Split main_df into train and test sets
+        main_train, main_test = train_test_split(main_df, test_size=test_size, random_state=random_state)
+
+        # Ensure that rows in main_train not present in filtered_df are removed
+        main_train_filtered = main_train[main_train.index.isin(filtered_df.index)]
+        # Split the train set to get the val set
+        main_train_filtered, main_val = train_test_split(main_train_filtered, test_size=val_size,
+                                                         random_state=random_state)
+        # Identify rows in filtered_df not present in main_df
+        filtered_not_in_main = filtered_df[~filtered_df.index.isin(main_df.index)]
+
+        # Combine rows from main_test and filtered_not_in_main into the test set
+        test_set = concat([main_test, filtered_not_in_main], axis=0)
+        test_set.drop_duplicates()
+        test_set.to_csv('benchmark/data/test_with_spec_rel.csv', index=False, header=True)
+        main_train_filtered.to_csv('benchmark/data/train_with_spec_rel.csv', index=False, header=True)
+        main_val.to_csv('benchmark/data/val_with_spec_rel.csv', index=False, header=True)
+        return main_train_filtered, test_set, main_val
 
     def create_dataframes(self, train_data_dict: dict, val_data_dict: dict, test_data_dict: dict) -> Tuple[
-        DataFrame, DataFrame, DataFrame]:
+                                                                                    DataFrame, DataFrame, DataFrame]:
         """
         Encodes relations in the provided data dictionaries and returns DataFrames with encoded relations.
 
@@ -267,11 +289,18 @@ class PrepareData:
               f"their reverse in train: {proportion_rev_added}%\n"
               f"Proportion of reverse relation that where already in the data: {proportion_rev_not_added}%\n"
               f"Proportion in test set of reverse relation with different relation name: {proportion_false_rev}%")
-
+        kg = read_csv(self.data_path, sep="\t", low_memory=False)
+        kg_without_mask_col = self.remove_mask_col(kg)
+        filtered_df = self.remove_specific_relation(kg_without_mask_col, 'full_relation', 'indication')
+        print(f"Number of lines in kg: {len(kg_without_mask_col)}\n "
+              f"Number of lines in filtered_df: {len(filtered_df)}\n"
+              f"Number of lines removed: {len(kg_without_mask_col)-len(filtered_df)}")
+        #filtered_df.to_csv('benchmark/output/test_filtre_relation.csv')
+        train, test, val = self.split_in_train_test_set(main_df=kg_without_mask_col, filtered_df = filtered_df, test_size=0.2, val_size=0.1, random_state=3)
 
 if __name__ == "__main__":
     prepare_data = PrepareData('benchmark/data/KG_edgelist_mask_cor.txt')
-    print(prepare_data.main())
+    prepare_data.main()
 
 
 

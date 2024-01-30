@@ -14,7 +14,7 @@ sys.path.insert(0, '../..') # add config to path
 #import project_config
 
 
-def clean_edges(df): 
+def clean_edges(df): # class1
     df = df.get(['relation', 'display_relation', 'x_id', 'x_idx', 'x_type', 'x_name', 'x_source', 'y_id', 'y_idx', 'y_type', 'y_name', 'y_source'])
     assert len(df[df.isna().any(axis=1)]) == 0
     df = df.dropna()
@@ -23,7 +23,7 @@ def clean_edges(df):
     return df
 
 
-def get_node_df(graph): # Assign nodes to IDs between 0 and N-1
+def get_node_df(graph): # Assign nodes to IDs between 0 and N-1 #class1
     
     # Get all nodes
     nodes = pd.concat([graph.get(['x_id','x_type', 'x_name','x_source']).rename(columns={'x_id':'node_id', 'x_type':'node_type', 'x_name':'node_name','x_source':'node_source'}), graph.get(['y_id','y_type', 'y_name','y_source']).rename(columns={'y_id':'node_id', 'y_type':'node_type', 'y_name':'node_name','y_source':'node_source'})]).drop_duplicates(ignore_index=True)
