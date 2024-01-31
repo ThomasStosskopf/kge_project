@@ -6,18 +6,48 @@ from collections import Counter
 
 class PrepareKG:
 
-    def __init__(self, kg_path, output_nodes_map, output_kg_edge_list):
+    def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
+                 output_train: str, output_test: str, output_val: str):
+        """
+        Initialize the PrepareKG class with the provided paths for knowledge graph data and output files.
+
+        Parameters:
+        - kg_path (str): The file path to the knowledge graph data.
+        - output_nodes_map (str): The file path to save the nodes mapping data.
+        - output_kg_edge_list (str): The file path to save the knowledge graph edge list data.
+        """
         self.kg = self.read_graph(kg_path)
         self.output_nodes_map = output_nodes_map
         self.output_kg_edge_list = output_kg_edge_list
+        self.output_train = output_train
+        self.output_test = output_test
+        self.output_val = output_val
 
-    def read_graph(self, path):
+    def read_graph(self, path: str) -> DataFrame:
+        """
+        Read the knowledge graph data from a CSV file and preprocess it.
+
+        Parameters:
+        - path (str): The file path to the knowledge graph data.
+
+        Returns:
+        - DataFrame: Processed knowledge graph data as a pandas DataFrame.
+        """
         graph = read_csv(path, dtype={"x_id": str, "y_id": str})
         graph = graph[graph["x_name"] != "missing"]
         graph = graph[graph["y_name"] != "missing"]
         return graph
 
-    def clean_edges(self, df):  # class1
+    def clean_edges(self, df: DataFrame) -> DataFrame:
+        """
+        Clean the edges of the knowledge graph DataFrame.
+
+        Parameters:
+        - df (DataFrame): The DataFrame representing the knowledge graph.
+
+        Returns:
+        - DataFrame: Cleaned knowledge graph DataFrame with valid edges.
+        """
         df = df.get(
             ['relation', 'display_relation', 'x_id', 'x_idx', 'x_type', 'x_name', 'x_source', 'y_id', 'y_idx', 'y_type',
              'y_name', 'y_source'])
@@ -28,8 +58,16 @@ class PrepareKG:
             'not ((x_id == y_id) and (x_idx == y_idx) and (x_type == y_type) and (x_source == y_source) and (x_name == y_name))')
         return df
 
-    def get_node_df(self, graph):  # Assign nodes to IDs between 0 and N-1 #class1
+    def get_node_df(self, graph: DataFrame) -> DataFrame:  # Assign nodes to IDs between 0 and N-1 #class1
+        """
+        Assign node indices to nodes in the knowledge graph.
 
+        Parameters:
+        - graph (DataFrame): The DataFrame representing the knowledge graph.
+
+        Returns:
+        - DataFrame: DataFrame containing node indices assigned to nodes.
+        """
         # Get all nodes
         nodes = concat([graph.get(['x_id', 'x_type', 'x_name', 'x_source']).rename(
             columns={'x_id': 'node_id', 'x_type': 'node_type', 'x_name': 'node_name', 'x_source': 'node_source'}),
@@ -129,9 +167,19 @@ class PrepareKG:
         full_graph = graph.drop_duplicates(ignore_index=True).reset_index()
 
         full_graph["full_relation"] = full_graph["x_type"] + ";" + full_graph["relation"] + ";" + full_graph["y_type"]
+        full_graph = full_graph[["x_idx", "y_idx", "full_relation"]]
+        full_graph.columns = ["from", "to", "rel"]
+        full_graph = full_graph.drop_duplicates(ignore_index=True).reset_index(drop=True)
+
         return full_graph
 
-    def generate_edgelist(self):
+    def generate_edgelist(self) -> tuple[DataFrame, DataFrame]:
+        """
+        Generate edge lists for the knowledge graph.
+
+        Returns:
+        - tuple[DataFrame, DataFrame]: A tuple containing DataFrames representing the full graph and new nodes.
+        """
         node_map_f = self.output_nodes_map
         mask_f = self.output_kg_edge_list
         graph = self.kg
@@ -144,29 +192,173 @@ class PrepareKG:
         giant_nodes = giant.vs['name']
         new_kg, new_nodes = self.map_to_LCC(edges, giant, nodes, giant_nodes)
 
-        new_kg.to_csv("benchmark/output/new_kg.csv", sep="\t", index=False)
         full_graph = new_kg
         print(full_graph)
-        ############################################################# WE CAN TRY TO REMOVE THIS LINE
-        print("Starting to get reverse edges")
-        #full_graph = add_reverse_edges(full_graph)  # en faisant ca elles rajoutent de nouveaux des duplicats
-        #############################################################
+        return full_graph, new_nodes
 
-        full_graph = self.expand_graph_relations(full_graph)
 
+    def saving_dataframe(self, full_graph: DataFrame, new_nodes: DataFrame) -> None:
+        """
+        Save the final processed dataframes to output files.
+
+        Parameters:
+        - full_graph (DataFrame): DataFrame representing the full graph.
+        - new_nodes (DataFrame): DataFrame representing the new nodes in the graph.
+
+        Returns:
+        - None
+        """
         print("Starting to save final dataframes")
         new_nodes = new_nodes.get(["new_node_idx", "node_id", "node_type", "node_name", "node_source"]).rename(
             columns={"new_node_idx": "node_idx"})
-        new_nodes.to_csv(node_map_f, sep="\t", index=False)
-        full_graph = full_graph[["x_idx", "y_idx", "full_relation"]]
-        full_graph = full_graph.drop_duplicates(ignore_index=True).reset_index(drop=True)
-
+        new_nodes.to_csv(self.output_nodes_map, sep="\t", index=False)
         #full_graph = self.split_edges(full_graph)
-        full_graph.to_csv(mask_f, sep="\t", index=False)
+        full_graph.to_csv(self.output_kg_edge_list, sep="\t", index=False)
 
-        print("Final Number of Edges:", len(full_graph["full_relation"].tolist()))
-        for k, v in Counter(full_graph["full_relation"].tolist()).items():
+
+    def print_relations_count(self, full_graph: DataFrame) -> None:
+        """
+        Print the count of relations in the knowledge graph.
+
+        Parameters:
+        - full_graph (DataFrame): DataFrame representing the full graph.
+
+        Returns:
+        - None
+        """
+        print("Final Number of Edges:", len(full_graph["rel"].tolist()))
+        for k, v in Counter(full_graph["rel"].tolist()).items():
             print(k, v)
+
+    def save_train_test_val(self, train: DataFrame, test: DataFrame, val: DataFrame) -> None:
+        train.to_csv(self.output_train, sep="\t", index=False)
+        test.to_csv(self.output_test, sep="\t", index=False)
+        val.to_csv(self.output_val, sep="\t", index=False)
+
+    def reverse_relations_not_added(self, merged_df: DataFrame) -> DataFrame:
+        """
+        Calculate the number of reverse relations not added in the merged DataFrame.
+
+        This function takes a DataFrame containing merged data and calculates the number of reverse relations
+        that have not been added to the merged DataFrame. It removes lines where '_rev' is found in either 'rel_train'
+        or 'rel_test' columns, compares the elements between the semicolons in 'rel_train' and 'rel_test', and filters
+        out lines where these elements differ.
+
+        Parameters:
+        - merged_df (DataFrame): A DataFrame containing merged data with columns 'rel_train' and 'rel_test'.
+
+        Returns:
+        - int: The number of lines in the DataFrame after filtering, representing the count of reverse relations
+               not added to the merged DataFrame.
+
+        Note:
+        - The function modifies the DataFrame by filtering out lines where '_rev' is found in 'rel_train' or 'rel_test'
+          columns and comparing elements between semicolons in these columns.
+        """
+        # remove all lines where you can find _rev
+        filtered_df = merged_df[~(merged_df['rel_train'].str.contains('_rev') | merged_df['rel_test'].str.contains('_rev'))]
+
+        # Separate elements between semicolons in rel_train and rel_test
+        filtered_df['rel_train_elements'] = filtered_df['rel_train'].str.split(';')
+        filtered_df['rel_test_elements'] = filtered_df['rel_test'].str.split(';')
+
+        # Compare elements between semicolons in rel_train and rel_test and filter lines
+        filtered_df = filtered_df[filtered_df['rel_train_elements'].apply(lambda x: x[1]) == filtered_df['rel_test_elements'].apply(lambda x: x[1])]
+
+        return filtered_df
+
+    def count_reverse_relations_added(self, merged_df: DataFrame) -> int:
+        """
+        Count the number of reverse relations added to the merged DataFrame.
+
+        This function calculates the number of reverse relations added to the merged DataFrame by inspecting
+        the 'rel_train' and 'rel_test' columns.
+
+        Parameters:
+        - merged_df (DataFrame): A DataFrame containing merged data with columns 'rel_train' and 'rel_test'.
+
+        Returns:
+        - int: The total count of reverse relations added to the merged DataFrame.
+        """
+        relation_in_test = merged_df["rel_test"]
+        relation_in_train = merged_df["rel_train"]
+        results_filtered = [relation for relation in relation_in_test if "_rev" in relation]
+        filter_rev_in_train = [relation for relation in relation_in_train if "_rev" in relation]
+        # here you got the real number of reverse relations added by the prepare_graph.py script
+        nb_rev_rel_added = len(results_filtered) + len(filter_rev_in_train)
+        return nb_rev_rel_added
+
+
+    def count_false_reverse_relation(self, merged_df: DataFrame) -> DataFrame:
+        """
+        Count the number of false reverse relations in the merged DataFrame.
+
+        This function counts the number of false reverse relations in the merged DataFrame by comparing elements
+        between semicolons in the 'rel_train' and 'rel_test' columns. It removes lines where '_rev' is found in either
+        'rel_train' or 'rel_test' columns and filters out lines where these elements differ.
+
+        Parameters:
+        - merged_df (DataFrame): A DataFrame containing merged data with columns 'rel_train' and 'rel_test'.
+
+        Returns:
+        - int: The number of lines in the DataFrame after filtering, representing the count of false reverse relations.
+
+        Note:
+        - The function modifies the DataFrame by removing lines where '_rev' is found in 'rel_train' or 'rel_test'
+          columns and comparing elements between semicolons in these columns.
+        """
+        # remove all lines where you can find _rev
+        filtered_df = merged_df[~(merged_df['rel_train'].str.contains('_rev') | merged_df['rel_test'].str.contains('_rev'))]
+
+        # Separate elements between semicolons in rel_train and rel_test
+        filtered_df['rel_train_elements'] = filtered_df['rel_train'].str.split(';')
+        filtered_df['rel_test_elements'] = filtered_df['rel_test'].str.split(';')
+        # Compare elements between semicolons in rel_train and rel_test and filter lines
+        filtered_df = filtered_df[
+            filtered_df['rel_train_elements'].apply(lambda x: x[1]) != filtered_df['rel_test_elements'].apply(
+                lambda x: x[1])]
+        return filtered_df
+
+    def calculate_reverse_relation_proportion(self, df_train: DataFrame,
+                                      df_test: DataFrame, df_val: DataFrame = None) -> tuple[float, float, float]:
+        """
+        Calculate the proportion of reverse relations added and not added in the dataset.
+
+        This function computes the proportion of reverse relations that were added and not added in the dataset.
+        It merges the training and testing DataFrames, counts the added and not added reverse relations,
+        and calculates the proportions.
+
+        Parameters:
+        - df_train (DataFrame): The training DataFrame.
+        - df_test (DataFrame): The testing DataFrame.
+        - df_val (DataFrame, optional): The validation DataFrame. Defaults to None.
+
+        Returns:
+        - Tuple[float, float]: A tuple containing the proportion of added and not added reverse relations, respectively.
+        """
+        if df_val is not None:
+            full_train = concat([df_train, df_val], ignore_index=True)
+        else:
+            full_train = df_train
+        # Merged dataframes on the columns 'from' and 'to'
+        merged_df = merge(full_train, df_test, left_on=['from', 'to'], right_on=['to', 'from'], suffixes=('_train', '_test'))
+        # saved the merged dataframe for controls
+        merged_df.to_csv('benchmark/data/merged_reverse_train_test_test_3.csv', index=False, header=True)
+
+        # here you got the real number of reverse relations added by the prepare_graph.py script
+        nb_rev_rel_added = self.count_reverse_relations_added(merged_df)
+        df_reverse_relation_not_added = self.reverse_relations_not_added(merged_df)
+        nb_rev_not_added = len(df_reverse_relation_not_added)
+        df_false_rev_rel = self.count_false_reverse_relation(merged_df)
+        nb_false_rev_rel = len(df_false_rev_rel)
+
+        # Calculer la proportion
+        total_reverse_relations = len(full_train) + len(df_test)
+        print(f"Total number of reverse relations: {total_reverse_relations}")
+        proportion_rev_added = round((nb_rev_rel_added / len(df_test)) * 100, 2)
+        proportion_rev_not_added = round((nb_rev_not_added / len(df_test)) * 100, 2)
+        proportion_false_rev = round((nb_false_rev_rel / len(df_test)) * 100, 2)
+        return proportion_rev_added, proportion_rev_not_added, proportion_false_rev
 
 
 if __name__ == "__main__":
