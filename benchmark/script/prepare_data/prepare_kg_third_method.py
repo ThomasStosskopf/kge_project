@@ -1,4 +1,4 @@
-from pandas import DataFrame, merge, concat
+from pandas import DataFrame, concat
 from sklearn.model_selection import train_test_split
 from prepare_kg_second_method import PrepareKGSecondMethod
 
@@ -76,7 +76,7 @@ class PrepareKGThirdMethod(PrepareKGSecondMethod):
 
         train_set, test_set, val_set = self.concat_split_sets(relation_train_test_val_splits=dict_train_test_split)
         self.save_train_test_val(train=train_set, test=test_set, val=val_set)
-   
+
 
 if __name__ == "__main__":
     prepare_kg = PrepareKGThirdMethod(kg_path='benchmark/data/kg_giant_orphanet.csv',
