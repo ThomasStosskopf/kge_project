@@ -4,17 +4,84 @@ from prepare_kg_second_method import PrepareKGSecondMethod
 
 
 class PrepareKGThirdMethod(PrepareKGSecondMethod):
+    """
+    A class for preparing knowledge graphs using the third method.
+
+    This class extends the functionality of the PrepareKGSecondMethod class and provides methods
+    to split the graph based on relations and concatenate the split sets.
+
+    Attributes:
+    - kg_path (str): The path to the knowledge graph file.
+    - output_nodes_map (str): The path to the output file containing node mappings.
+    - output_kg_edge_list (str): The path to the output file containing the knowledge graph edge list.
+    - output_train (str): The path to save the training set.
+    - output_test (str): The path to save the testing set.
+    - output_val (str): The path to save the validation set.
+
+    Methods:
+    - __init__(self, kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val):
+        Initialize the PrepareKGThirdMethod object.
+
+    - get_unique_values(self, graph, column_name):
+        Get unique values from a specific column in the graph DataFrame.
+
+    - split_dataframe_based_on_relation(self, graph, column_name, unique_rel):
+        Split the DataFrame based on relation types.
+
+    - split_each_dataframe_into_train_test_val(self, relations_dict_dataframe, test_size, val_size, random_state):
+        Split each DataFrame representing a relation into train-test-validation sets.
+
+    - concat_split_sets(self, relation_train_test_val_splits):
+        Concatenate the split sets for each relation type into one big DataFrame per set type.
+
+    - main(self):
+        Perform the main processing steps including graph expansion, relation removal,
+        splitting into train-test-validation sets, and saving the processed sets.
+    """
 
     def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
                  output_train="benchmark/data/train_set_third_method.csv",
                  output_test="benchmark/data/test_set_third_method.csv",
                  output_val="benchmark/data/val_set_third_method.csv"):
+        """
+        Initialize the PrepareKGThirdMethod object.
+
+        Parameters:
+        - kg_path (str): The path to the knowledge graph file.
+        - output_nodes_map (str): The path to the output file containing node mappings.
+        - output_kg_edge_list (str): The path to the output file containing the knowledge graph edge list.
+        - output_train (str, optional): The path to save the training set. Defaults to "benchmark/data/train_set_third_method.csv".
+        - output_test (str, optional): The path to save the testing set. Defaults to "benchmark/data/test_set_third_method.csv".
+        - output_val (str, optional): The path to save the validation set. Defaults to "benchmark/data/val_set_third_method.csv".
+        """
         super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val)
 
     def get_unique_values(self, graph: DataFrame, column_name: str) -> list:
+        """
+        Get unique values from a specific column in the graph DataFrame.
+
+        Parameters:
+        - graph (DataFrame): The DataFrame representing the input graph.
+        - column_name (str): The name of the column from which unique values are extracted.
+
+        Returns:
+        - list: A list of unique values from the specified column.
+        """
         return graph[column_name].unique()
 
     def split_dataframe_based_on_relation(self, graph: DataFrame, column_name: str, unique_rel: list) -> dict:
+        """
+        Split the DataFrame based on relation types.
+
+        Parameters:
+        - graph (DataFrame): The DataFrame representing the input graph.
+        - column_name (str): The name of the column representing relations.
+        - unique_rel (list): A list of unique relation types.
+
+        Returns:
+        - dict: A dictionary where keys are relation types and values are DataFrames containing data
+                corresponding to each relation type.
+        """
         relation_dataframes = {}
         for rel in unique_rel:
             rel_df = graph[graph[column_name] == rel].copy()
@@ -23,6 +90,20 @@ class PrepareKGThirdMethod(PrepareKGSecondMethod):
 
     def split_each_dataframe_into_train_test_val(self, relations_dict_dataframe: dict, test_size=0.2,
                                                  val_size=0.1, random_state=None) -> dict:
+        """
+        Split each DataFrame representing a relation into train-test-validation sets.
+
+        Parameters:
+        - relations_dict_dataframe (dict): A dictionary where keys are relation types, and the corresponding
+                                           values are DataFrames containing data for each relation type.
+        - test_size (float, optional): The proportion of the data to include in the test set. Defaults to 0.2.
+        - val_size (float, optional): The proportion of the training set to include in the validation set. Defaults to 0.1.
+        - random_state (int or None, optional): Controls the randomness of the splitting. Defaults to None.
+
+        Returns:
+        - dict: A dictionary where keys are relation types, and the corresponding values are tuples
+                containing DataFrames representing the training, testing, and validation sets, respectively.
+        """
         relation_train_test_val_splits = {}
         for rel, rel_df in relations_dict_dataframe.items():
             train_set, test_set = train_test_split(rel_df, test_size=test_size, random_state=random_state)
