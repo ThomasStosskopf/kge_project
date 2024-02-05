@@ -1,5 +1,4 @@
 from pandas import concat, DataFrame, merge
-from sklearn.model_selection import train_test_split
 from prepare_kg import PrepareKG
 
 
@@ -111,35 +110,7 @@ class PrepareKGFirstMethod(PrepareKG):
         rev_edges = concat((rev_edge_eqtype, rev_edge_neqtype)).drop_duplicates(ignore_index=True).reset_index()
         return rev_edges
 
-    def split_train_test_val(self, graph: DataFrame, test_size = 0.2, val_size = 0.1, random_state = None) -> (
-            tuple)[DataFrame, DataFrame, DataFrame]:
-        """
-        Split the input graph DataFrame into training, testing, and validation sets.
 
-        This function divides the input graph DataFrame into three subsets: training set, testing set, and validation set.
-        The data splitting is performed based on the specified proportions for the test and validation sets.
-
-        Parameters:
-        - graph (DataFrame): The DataFrame representing the input graph.
-        - test_size (float, optional): The proportion of the graph to include in the test set. Defaults to 0.2.
-        - val_size (float, optional): The proportion of the training set to include in the validation set.
-                                      Defaults to 0.1.
-        - random_state (int or None, optional): Controls the randomness of the splitting.
-                                                 If specified, it ensures reproducibility of the splitting.
-                                                 Defaults to None.
-
-        Returns:
-        - tuple[DataFrame, DataFrame, DataFrame]: A tuple containing DataFrames representing the training, testing,
-                                                   and validation sets, respectively.
-
-        Note:
-        - The sum of test_size and val_size should be less than 1.0 to ensure that there is data left for the training set.
-        - If random_state is set, the data splitting will be reproducible across multiple function calls.
-        - The function utilizes the train_test_split function from scikit-learn to perform the data splitting.
-        """
-        train_set, test_set = train_test_split(graph, test_size=test_size, random_state=random_state)
-        train_set, val_size = train_test_split(train_set, test_size=val_size, random_state=random_state)
-        return train_set, test_set, val_size
 
     def main(self):
         full_graph, new_nodes = self.generate_edgelist()
@@ -149,14 +120,14 @@ class PrepareKGFirstMethod(PrepareKG):
         print(f"FULL_GRAPH BEFORE SAVING:\n{full_graph}")
         self.saving_dataframe(full_graph, new_nodes)
         self.print_relations_count(full_graph)
-        train_set, test_set, val_set = self.split_train_test_val(full_graph, random_state=3)
-        self.save_train_test_val(train=train_set, test=test_set, val=val_set)
+        train_set, test_set = self.split_train_test_val(full_graph, random_state=3)
+        self.save_train_test_val(train=train_set, test=test_set)
 
         print(f"TRAIN_SET HERE:\n{train_set}")
 
 
         proportion_rev_added, proportion_rev_not_added, proportion_false_rev = (
-            self.calculate_reverse_relation_proportion(train_set, test_set, val_set))
+            self.calculate_reverse_relation_proportion(train_set, test_set))
         print(f"Proportion of reverse relation in test that got "
               f"their reverse in train: {proportion_rev_added}%\n"
               f"Proportion of reverse relation that where already in the data: {proportion_rev_not_added}%\n"

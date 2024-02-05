@@ -1,5 +1,4 @@
 from pandas import DataFrame, merge
-from sklearn.model_selection import train_test_split
 from prepare_kg import PrepareKG
 
 
@@ -44,9 +43,9 @@ class PrepareKGSecondMethod(PrepareKG):
     """
 
     def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
-                 output_train="benchmark/data/train_set_second_method.csv",
-                 output_test="benchmark/data/test_set_second_method.csv",
-                 output_val="benchmark/data/val_set_second_method.csv"):
+                 output_train="benchmark/data/train_set_second2_method.csv",
+                 output_test="benchmark/data/test_set_second2_method.csv",
+                 output_val="benchmark/data/val_set_second2_method.csv"):
         """
         Initialize the PrepareKGSecondMethod object.
 
@@ -128,35 +127,18 @@ class PrepareKGSecondMethod(PrepareKG):
 
         return graph_wo_redundant
 
-    def split_train_test_val(self, graph: DataFrame, test_size=0.2, val_size=0.1, random_state=None) -> (
-            tuple)[DataFrame, DataFrame, DataFrame]:
-        """
-        Split the input graph DataFrame into training, testing, and validation sets.
+    def remove_reverse_or_redundant_in_train(self, train_set: DataFrame, test_set: DataFrame) -> DataFrame:
+        # Create a set of tuples for pairs of 'from' and 'to' in the test_set
+        test_pairs = set(tuple(row[['from', 'to']]) for _, row in test_set.iterrows())
 
-        This function divides the input graph DataFrame into three subsets: training set, testing set, and validation set.
-        The data splitting is performed based on the specified proportions for the test and validation sets.
+        # Create a boolean mask to filter rows from the train_set that do not exist in the test_set
+        mask = ~train_set.apply(lambda row: tuple(row[['from', 'to']]) in test_pairs or \
+                                            tuple(row[['to', 'from']]) in test_pairs, axis=1)
 
-        Parameters:
-        - graph (DataFrame): The DataFrame representing the input graph.
-        - test_size (float, optional): The proportion of the graph to include in the test set. Defaults to 0.2.
-        - val_size (float, optional): The proportion of the training set to include in the validation set.
-                                      Defaults to 0.1.
-        - random_state (int or None, optional): Controls the randomness of the splitting.
-                                                 If specified, it ensures reproducibility of the splitting.
-                                                 Defaults to None.
+        # Apply the mask to filter out rows in train_set
+        filtered_train_set = train_set[mask]
 
-        Returns:
-        - tuple[DataFrame, DataFrame, DataFrame]: A tuple containing DataFrames representing the training, testing,
-                                                   and validation sets, respectively.
-
-        Note:
-        - The sum of test_size and val_size should be less than 1.0 to ensure that there is data left for the training set.
-        - If random_state is set, the data splitting will be reproducible across multiple function calls.
-        - The function utilizes the train_test_split function from scikit-learn to perform the data splitting.
-        """
-        train_set, test_set = train_test_split(graph, test_size=test_size, random_state=random_state)
-        train_set, val_size = train_test_split(train_set, test_size=val_size, random_state=random_state)
-        return train_set, test_set, val_size
+        return filtered_train_set
 
     def main(self):
         """
@@ -168,16 +150,18 @@ class PrepareKGSecondMethod(PrepareKG):
         full_graph = self.expand_graph_relations(full_graph)
         print(f"FULL_GRAPH BEFORE SAVING:\n{full_graph}")
         self.saving_dataframe(full_graph, new_nodes)
-        full_graph = self.remove_reverse_relation(full_graph)
-        full_graph = self.remove_redundant_relation(full_graph)
+        train, test = self.split_train_test_val(full_graph, random_state=3)
+
+        train = self.remove_reverse_or_redundant_in_train(train_set=train, test_set=test)
+
         self.print_relations_count(full_graph)
         print(full_graph)
-        train, test, val = self.split_train_test_val(full_graph, random_state=3)
-        self.save_train_test_val(train=train, test=test, val=val)
+
+        self.save_train_test_val(train=train, test=test)
 
 
         proportion_rev_added, proportion_rev_not_added, proportion_false_rev = (
-            self.calculate_reverse_relation_proportion(train, test, val))
+            self.calculate_reverse_relation_proportion(train, test))
         print(f"Proportion of reverse relation in test that got "
               f"their reverse in train: {proportion_rev_added}%\n"
               f"Proportion of reverse relation that where already in the data: {proportion_rev_not_added}%\n"

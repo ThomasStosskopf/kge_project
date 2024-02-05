@@ -1,33 +1,31 @@
-
+import argparse
 from pykeen.pipeline import pipeline
 
+def main(args):
+    result = pipeline(
+        training=args.train_path,
+        testing=args.test_path,
+        validation=args.val_path,
+        model=args.model,
+        epochs=args.epochs
+    )
+    result.save_to_directory(args.output_dir)
 
-import pandas as pd
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="PyKEEN Pipeline Argument Parser")
 
-def convert_csv_to_tsv(csv_file_path, tsv_file_path):
-    df = pd.read_csv(csv_file_path, sep=',')
-    df.to_csv(tsv_file_path, sep='\t', index=False)
+    parser.add_argument("--train_path", type=str, default="benchmark/data/train_set.tsv",
+                        help="Path to the training set TSV file")
+    parser.add_argument("--test_path", type=str, default="",
+                        help="Path to the testing set TSV file")
+    parser.add_argument("--val_path", type=str, default="",
+                        help="Path to the validation set TSV file")
+    parser.add_argument("--model", type=str, default="TransE",
+                        help="Name of the model to use")
+    parser.add_argument("--epochs", type=int, default=5,
+                        help="Number of epochs to traindf_specific_rel")
+    parser.add_argument("--output_dir", type=str, default="./",
+                        help="Output directory to save the results")
 
-
-# Convert your files
-convert_csv_to_tsv("benchmark/data/train_set.csv", "benchmark/data/train_set.tsv")
-convert_csv_to_tsv("benchmark/data/test_set.csv", "benchmark/data/test_set.tsv")
-convert_csv_to_tsv("benchmark/data/val_set.csv", "benchmark/data/val_set.tsv")
-
-
-result = pipeline(
-
-    training="benchmark/data/train_set.tsv",
-
-    testing="benchmark/data/test_set.tsv",
-
-    validation="benchmark/data/val_set.tsv",
-
-    model='TransE',
-
-    epochs=5,  # short epochs for testing - you should go higher
-
-
-)
-
-result.save_to_directory('./')
+    args = parser.parse_args()
+    main(args)

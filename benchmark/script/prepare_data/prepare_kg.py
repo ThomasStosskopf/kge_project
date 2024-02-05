@@ -2,6 +2,7 @@
 from pandas import concat, merge, read_csv, DataFrame
 from igraph import Graph
 from collections import Counter
+from sklearn.model_selection import train_test_split
 
 
 class PrepareKG:
@@ -226,14 +227,24 @@ class PrepareKG:
         Returns:
         - None
         """
-        print("Final Number of Edges:", len(full_graph["rel"].tolist()))
-        for k, v in Counter(full_graph["rel"].tolist()).items():
-            print(k, v)
+        # Count the occurrences of each relation
+        relation_counts = Counter(full_graph["rel"])
 
-    def save_train_test_val(self, train: DataFrame, test: DataFrame, val: DataFrame) -> None:
+        print("Final Number of Edges:", len(full_graph))  # Prints the total number of edges
+
+        # Print each relation and its count
+        for relation, count in relation_counts.items():
+            print(relation, count)
+
+        # Create a DataFrame from the relation counts and save it to a TSV file
+        df_relation = DataFrame(relation_counts.items(), columns=['Relation', 'Count'])
+        df_relation.to_csv("benchmark/data/relations.tsv", sep="\t", index=False)
+
+    def save_train_test_val(self, train: DataFrame, test: DataFrame, val=None) -> None:
         train.to_csv(self.output_train, sep="\t", index=False)
         test.to_csv(self.output_test, sep="\t", index=False)
-        val.to_csv(self.output_val, sep="\t", index=False)
+        if val is not None:
+            val.to_csv(self.output_val, sep="\t", index=False)
 
     def reverse_relations_not_added(self, merged_df: DataFrame) -> DataFrame:
         """
@@ -360,6 +371,39 @@ class PrepareKG:
         proportion_false_rev = round((nb_false_rev_rel / len(df_test)) * 100, 2)
         return proportion_rev_added, proportion_rev_not_added, proportion_false_rev
 
+    def split_train_test_val(self, graph: DataFrame, test_size=0.2, random_state=None) -> (
+            tuple)[DataFrame, DataFrame]:
+        """
+        Split the input graph DataFrame into training, testing, and validation sets.
+
+        This function divides the input graph DataFrame into three subsets: training set, testing set, and validation set.
+        The data splitting is performed based on the specified proportions for the test and validation sets.
+
+        Parameters:
+        - graph (DataFrame): The DataFrame representing the input graph.
+        - test_size (float, optional): The proportion of the graph to include in the test set. Defaults to 0.2.
+        - val_size (float, optional): The proportion of the training set to include in the validation set.
+                                      Defaults to 0.1.
+        - random_state (int or None, optional): Controls the randomness of the splitting.
+                                                 If specified, it ensures reproducibility of the splitting.
+                                                 Defaults to None.
+
+        Returns:
+        - tuple[DataFrame, DataFrame, DataFrame]: A tuple containing DataFrames representing the training, testing,
+                                                   and validation sets, respectively.
+
+        Note:
+        - The sum of test_size and val_size should be less than 1.0 to ensure that there is data left for the training set.
+        - If random_state is set, the data splitting will be reproducible across multiple function calls.
+        - The function utilizes the train_test_split function from scikit-learn to perform the data splitting.
+        """
+        train_set, test_set = train_test_split(graph, test_size=test_size, random_state=random_state)
+        return train_set, test_set
+
+    def check_train_test_independence(self, train_set: DataFrame, test_set: DataFrame):
+        merged_df = merge(train_set, test_set, left_on=['from', 'to'], right_on=['from', 'to'], suffixes=('_test', '_test'))
+        print(merged_df)
+        return None
 
 if __name__ == "__main__":
     prepare_kg = PrepareKG(kg_path='benchmark/data/kg_giant_orphanet.csv',

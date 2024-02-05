@@ -2,13 +2,15 @@ from pandas import DataFrame, concat
 from sklearn.model_selection import train_test_split
 from prepare_kg_second_method import PrepareKGSecondMethod
 
-
 class PrepareKGThirdMethod(PrepareKGSecondMethod):
     """
     A class for preparing knowledge graphs using the third method.
 
     This class extends the functionality of the PrepareKGSecondMethod class and provides methods
-    to split the graph based on relations and concatenate the split sets.
+    to split the graph based on relations and concatenate the split sets. We split the full graph into different
+    dataframe each dataframe containing only a specific relationship. Then each dataframe is split into train and
+    test set. 80% in train, 20% in test. At the end all the train set are concat together and all the test set are
+    concat together.
 
     Attributes:
     - kg_path (str): The path to the knowledge graph file.
@@ -104,14 +106,14 @@ class PrepareKGThirdMethod(PrepareKGSecondMethod):
         - dict: A dictionary where keys are relation types, and the corresponding values are tuples
                 containing DataFrames representing the training, testing, and validation sets, respectively.
         """
-        relation_train_test_val_splits = {}
+        relation_train_test_splits = {}
         for rel, rel_df in relations_dict_dataframe.items():
             train_set, test_set = train_test_split(rel_df, test_size=test_size, random_state=random_state)
-            train_set, val_set = train_test_split(train_set, test_size=val_size, random_state=random_state)
-            relation_train_test_val_splits[rel] = (train_set, test_set, val_set)
-        return relation_train_test_val_splits
+            # train_set, val_set = train_test_split(train_set, test_size=val_size, random_state=random_state)
+            relation_train_test_splits[rel] = (train_set, test_set)
+        return relation_train_test_splits
 
-    def concat_split_sets(self, relation_train_test_val_splits:dict) -> tuple:
+    def concat_split_sets(self, relation_train_test_splits:dict) -> tuple:
         """
         Concatenate the split sets for each relation type into one big dataframe per set type.
 
@@ -130,12 +132,12 @@ class PrepareKGThirdMethod(PrepareKGSecondMethod):
         concatenated_val_set = DataFrame()
 
         # Concatenate sets for each relation type
-        for rel, (train_set, test_set, val_set) in relation_train_test_val_splits.items():
+        for rel, (train_set, test_set) in relation_train_test_splits.items():
             concatenated_train_set = concat([concatenated_train_set, train_set])
             concatenated_test_set = concat([concatenated_test_set, test_set])
-            concatenated_val_set = concat([concatenated_val_set, val_set])
+            # concatenated_val_set = concat([concatenated_val_set, val_set])
 
-        return concatenated_train_set, concatenated_test_set, concatenated_val_set
+        return concatenated_train_set, concatenated_test_set
 
     def main(self) -> None:
         """
@@ -148,15 +150,16 @@ class PrepareKGThirdMethod(PrepareKGSecondMethod):
         print(f"FULL_GRAPH BEFORE SAVING:\n{full_graph}")
         self.saving_dataframe(full_graph, new_nodes)
         self.print_relations_count(full_graph)
-        full_graph = self.remove_reverse_relation(full_graph)
-        full_graph = self.remove_redundant_relation(full_graph)
         unique_rel = self.get_unique_values(graph=full_graph, column_name="rel")
         rel_df = self.split_dataframe_based_on_relation(graph=full_graph, column_name="rel", unique_rel=unique_rel)
         dict_train_test_split = self.split_each_dataframe_into_train_test_val(relations_dict_dataframe=rel_df,
                                                                               random_state=3)
 
-        train_set, test_set, val_set = self.concat_split_sets(relation_train_test_val_splits=dict_train_test_split)
-        self.save_train_test_val(train=train_set, test=test_set, val=val_set)
+        train_set, test_set = self.concat_split_sets(relation_train_test_splits=dict_train_test_split)
+
+        train_set = self.remove_reverse_or_redundant_in_train(train_set=train_set, test_set=test_set)
+
+        self.save_train_test_val(train=train_set, test=test_set)
 
 
 if __name__ == "__main__":

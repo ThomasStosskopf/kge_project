@@ -1,8 +1,8 @@
-from pandas import DataFrame, concat
-from prepare_kg_second_method import PrepareKGSecondMethod
+from pandas import DataFrame, concat, read_csv
+from prepare_kg_third_method import PrepareKGThirdMethod
+from typing import Union
 
-
-class PrepareKGFourthMethod(PrepareKGSecondMethod):
+class PrepareKGFourthMethod(PrepareKGThirdMethod):
     """
     A class for preparing knowledge graphs using the fourth method.
 
@@ -52,21 +52,39 @@ class PrepareKGFourthMethod(PrepareKGSecondMethod):
         """
         super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val)
 
-    def find_specific_relation(self, df: DataFrame, column: str, relation: str) -> tuple[DataFrame, DataFrame]:
+    def find_specific_relation(self, df: DataFrame, column: str, relations: Union[str, list]) -> tuple[
+        DataFrame, DataFrame]:
         """
-        Find a specific relation in the DataFrame.
+        Find specific relation(s) in the DataFrame and remove them.
 
         Parameters:
-        - df (DataFrame): The DataFrame to search for the specific relation.
+        - df (DataFrame): The DataFrame to search for the specific relation(s).
         - column (str): The name of the column where relations are stored.
-        - relation (str): The specific relation to find.
+        - relations (Union[str, list]): The relation(s) to find and remove. It can be a single relation or a list of relations.
 
         Returns:
         - tuple[DataFrame, DataFrame]: A tuple containing two DataFrames:
-                                       - The first DataFrame contains data excluding the specific relation.
-                                       - The second DataFrame contains data specific to the given relation.
+                                       - The first DataFrame contains data excluding the specific relation(s).
+                                       - The second DataFrame contains data specific to the given relation(s).
         """
-        return df[~(df[column].str.contains(relation))], df[(df[column].str.contains(relation))]
+        # Convert single relation to a list if it's not already a list
+        if isinstance(relations, str):
+            relations = [relations]
+
+        # Create boolean masks for each relation in the list
+        relation_masks = [df[column].str.contains(rel) for rel in relations]
+
+        # Combine the masks with logical OR to get a mask for all relations to remove
+        mask_to_remove = concat(relation_masks, axis=1).any(axis=1)
+
+        # Invert the mask to get a mask for data excluding the specific relation(s)
+        mask_to_keep = ~mask_to_remove
+
+        # Create DataFrames based on the masks
+        df_excluding_relations = df[mask_to_keep]
+        df_specific_relations = df[mask_to_remove]
+
+        return df_excluding_relations, df_specific_relations
 
     def percentage_of_specific_rel_in_dataset(self, graph: DataFrame, df_relation_specific: DataFrame) -> float:
         """
@@ -83,7 +101,7 @@ class PrepareKGFourthMethod(PrepareKGSecondMethod):
 
     def concat_test_and_specific_relation(self, test_set: DataFrame, specific_relation: DataFrame) -> DataFrame:
         """
-        Concatenate the test set with data specific to a certain relation.
+        Concatenate the test set with the data we removed from the full_graph knowledge graph.
 
         Parameters:
         - test_set (DataFrame): The original test set DataFrame.
@@ -93,6 +111,8 @@ class PrepareKGFourthMethod(PrepareKGSecondMethod):
         - DataFrame: The concatenated DataFrame containing the original test set and data specific to a certain relation.
         """
         return concat([test_set, specific_relation], axis=0)
+
+
 
     def main(self) -> None:
         """
@@ -105,23 +125,32 @@ class PrepareKGFourthMethod(PrepareKGSecondMethod):
         print(f"FULL_GRAPH BEFORE SAVING:\n{full_graph}")
         self.saving_dataframe(full_graph, new_nodes)
         self.print_relations_count(full_graph)
-        full_graph = self.remove_reverse_relation(full_graph)
-        full_graph = self.remove_redundant_relation(full_graph)
+        list_relation_to_remove_from_train = [";indication;", ";off-label use;"]
+        # Find the specify relation and put it in a dataframe for later
         full_graph_filtered, df_specific_rel = self.find_specific_relation(df=full_graph,
                                                                            column="rel",
-                                                                           relation="indication")
+                                                                           relations=list_relation_to_remove_from_train)
         percentage_rel_specific = self.percentage_of_specific_rel_in_dataset(graph=full_graph,
                                                                              df_relation_specific=df_specific_rel)
-        train, test, val = self.split_train_test_val(graph=full_graph_filtered,
-                                                    test_size=0.2-percentage_rel_specific,
-                                                   random_state=3)
 
-        test = self.concat_test_and_specific_relation(test_set=test, specific_relation=df_specific_rel)
+        unique_rel = self.get_unique_values(graph=full_graph_filtered, column_name="rel")
+        # Starting the 80-20% split train-test between all types of edges here
+        rel_df = self.split_dataframe_based_on_relation(graph=full_graph_filtered, column_name="rel",
+                                                        unique_rel=unique_rel)
+        dict_train_test_split = self.split_each_dataframe_into_train_test_val(relations_dict_dataframe=rel_df,
+                                                                              random_state=3)
+        train_set, test_set = self.concat_split_sets(relation_train_test_splits=dict_train_test_split)
 
-        self.save_train_test_val(test=test, train=train, val=val)
+        # Add the relation that we removed at the beginning
+        test_set = self.concat_test_and_specific_relation(test_set=test_set, specific_relation=df_specific_rel)
+        train_set = self.remove_reverse_or_redundant_in_train(train_set=train_set, test_set=test_set)
+        # Save train and test kg files
+        self.save_train_test_val(train=train_set, test=test_set)
 
-        print(percentage_rel_specific)
+        train_data = read_csv('benchmark/data/train_set_fourth_method.csv', sep="\t", low_memory=False)
+        test_data = read_csv("benchmark/data/test_set_fourth_method.csv", sep="\t", low_memory=False)
 
+        self.check_train_test_independence(train_set=train_data, test_set=test_data)
 
 if __name__ == "__main__":
     prepare_kg = PrepareKGFourthMethod(kg_path='benchmark/data/kg_giant_orphanet.csv',
