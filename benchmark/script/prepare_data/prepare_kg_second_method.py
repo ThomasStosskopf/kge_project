@@ -43,9 +43,9 @@ class PrepareKGSecondMethod(PrepareKG):
     """
 
     def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
-                 output_train="benchmark/data/train_set_second2_method.csv",
-                 output_test="benchmark/data/test_set_second2_method.csv",
-                 output_val="benchmark/data/val_set_second2_method.csv"):
+                 output_train="benchmark/data/train_set_second_method.csv",
+                 output_test="benchmark/data/test_set_second_method.csv",
+                 output_val="benchmark/data/val_set_second_method.csv"):
         """
         Initialize the PrepareKGSecondMethod object.
 
@@ -157,7 +157,11 @@ class PrepareKGSecondMethod(PrepareKG):
         self.print_relations_count(full_graph)
         print(full_graph)
 
-        self.save_train_test_val(train=train, test=test)
+        # Change columns orders to suit pykeen
+        test_set = self.organize_col(test)
+        train_set = self.organize_col(train)
+        # Save train and test kg files
+        self.save_train_test_val(train=train_set, test=test_set)
 
 
         proportion_rev_added, proportion_rev_not_added, proportion_false_rev = (

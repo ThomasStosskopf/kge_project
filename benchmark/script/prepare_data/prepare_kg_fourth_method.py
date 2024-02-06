@@ -144,13 +144,16 @@ class PrepareKGFourthMethod(PrepareKGThirdMethod):
         # Add the relation that we removed at the beginning
         test_set = self.concat_test_and_specific_relation(test_set=test_set, specific_relation=df_specific_rel)
         train_set = self.remove_reverse_or_redundant_in_train(train_set=train_set, test_set=test_set)
+        # Change columns orders to suit pykeen
+        test_set = self.organize_col(test_set)
+        train_set = self.organize_col(train_set)
         # Save train and test kg files
         self.save_train_test_val(train=train_set, test=test_set)
 
-        train_data = read_csv('benchmark/data/train_set_fourth_method.csv', sep="\t", low_memory=False)
-        test_data = read_csv("benchmark/data/test_set_fourth_method.csv", sep="\t", low_memory=False)
+        # train_data = read_csv('benchmark/data/train_set_fourth_method.csv', sep="\t", low_memory=False)
+        # test_data = read_csv("benchmark/data/test_set_fourth_method.csv", sep="\t", low_memory=False)
 
-        self.check_train_test_independence(train_set=train_data, test_set=test_data)
+
 
 if __name__ == "__main__":
     prepare_kg = PrepareKGFourthMethod(kg_path='benchmark/data/kg_giant_orphanet.csv',

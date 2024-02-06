@@ -121,6 +121,10 @@ class PrepareKGFirstMethod(PrepareKG):
         self.saving_dataframe(full_graph, new_nodes)
         self.print_relations_count(full_graph)
         train_set, test_set = self.split_train_test_val(full_graph, random_state=3)
+        # Change columns orders to suit pykeen
+        test_set = self.organize_col(test_set)
+        train_set = self.organize_col(train_set)
+        # Save train and test kg files
         self.save_train_test_val(train=train_set, test=test_set)
 
         print(f"TRAIN_SET HERE:\n{train_set}")

@@ -241,10 +241,10 @@ class PrepareKG:
         df_relation.to_csv("benchmark/data/relations.tsv", sep="\t", index=False)
 
     def save_train_test_val(self, train: DataFrame, test: DataFrame, val=None) -> None:
-        train.to_csv(self.output_train, sep="\t", index=False)
-        test.to_csv(self.output_test, sep="\t", index=False)
+        train.to_csv(self.output_train, sep="\t", index=False, header=False)
+        test.to_csv(self.output_test, sep="\t", index=False, header=False)
         if val is not None:
-            val.to_csv(self.output_val, sep="\t", index=False)
+            val.to_csv(self.output_val, sep="\t", index=False, header=False)
 
     def reverse_relations_not_added(self, merged_df: DataFrame) -> DataFrame:
         """
@@ -404,6 +404,10 @@ class PrepareKG:
         merged_df = merge(train_set, test_set, left_on=['from', 'to'], right_on=['from', 'to'], suffixes=('_test', '_test'))
         print(merged_df)
         return None
+
+    def organize_col(self, df: DataFrame):
+        return df[['from', 'rel', 'to']]
+
 
 if __name__ == "__main__":
     prepare_kg = PrepareKG(kg_path='benchmark/data/kg_giant_orphanet.csv',
