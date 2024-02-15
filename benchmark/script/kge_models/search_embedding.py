@@ -1,18 +1,16 @@
 import pykeen.nn
 from typing import List
-from pykeen.pipeline import pipeline
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
-from pykeen.triples import TriplesFactory
 import torch
 import pandas as pd
 
 
 
-model = torch.load("benchmark/output/output_first_method_test/DistMult_output_vrai50epochs/trained_model.pkl")
+model = torch.load("benchmark/output/output_first_method/TransE/trained_model.pkl")
 
-entity_representation_modules: List['pykeen.nn.Representation'] = model.entity_representations
-relation_representation_modules: List['pykeen.nn.Representation'] = model.relation_representations
+entity_representation_modules: List['pykeen.nn.Representation'] = model._build_representations
+relation_representation_modules: List['pykeen.nn.Representation'] = model._build_representations
 
 entity_embeddings: pykeen.nn.Embedding = entity_representation_modules[0]
 relation_embeddings: pykeen.nn.Embedding = relation_representation_modules[0]
@@ -28,21 +26,23 @@ entity_embedding_tensor: torch.FloatTensor = entity_embeddings(indices=None)
 relation_embedding_tensor: torch.FloatTensor = relation_embeddings(indices=None)
 
 # ca prend l'embedding et ca le convertie en numpy array
-entity_embedding = model.entity_representations[0](indices=None).detach().numpy()
+entity_embedding = model._build_representations[0](indices=None).detach().numpy()
 plt.figure(figsize=(6, 6))
 pca = PCA(n_components=2)
 m = pca.fit(entity_embedding)
 
 eu = m.transform(entity_embedding)
-df = pd.read_csv("benchmark/output/output_first_method_test/DistMult_output_vrai50epochs/training_triples/entity_to_id.tsv.gz", sep="\t")
-type_to_entities = pd.read_csv("benchmark/data/first_method/type_to_entities_first.csv", sep="\t")
-x_df = type_to_entities[["x_name", "x_type"]].copy()
 
+df = pd.read_csv(" benchmark/output/output_first_method/TransE/training_triples/entity_to_id.tsv.gz", sep="\t")
+type_to_entities = pd.read_csv("benchmark/data/first_method/type_to_entities_first.csv", sep="\t")
+
+
+x_df = type_to_entities[["x_name", "x_type"]].copy()
 y_df = type_to_entities[["y_name", "y_type"]].copy()
 x_df.rename(columns={"x_name": "label", "x_type": "type"}, inplace=True)
 y_df.rename(columns={"y_name": "label", "y_type": "type"}, inplace=True)
-
 entities_to_type = pd.concat([x_df, y_df], axis=0)
+
 df_merged = pd.merge(df, entities_to_type, on=["label"], how='left').drop_duplicates(ignore_index=True).reset_index()
 # Utilisation de la méthode value_counts() pour compter le nombre d'occurrences de chaque valeur
 counts = df_merged["id"].value_counts()
@@ -103,7 +103,7 @@ ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
 
 # Save the plot
-plt.savefig("benchmark/output/distmult_50epochs_embedding.png")
+plt.savefig("benchmark/output/img/embedding_transE_first_method_100_epochs.png")
 
 # Show plot
 plt.tight_layout()

@@ -2,6 +2,7 @@ from pandas import DataFrame, concat
 from sklearn.model_selection import train_test_split
 from prepare_kg_second_method import PrepareKGSecondMethod
 
+
 class PrepareKGThirdMethod(PrepareKGSecondMethod):
     """
     A class for preparing knowledge graphs using the third method.
@@ -41,22 +42,17 @@ class PrepareKGThirdMethod(PrepareKGSecondMethod):
         splitting into train-test-validation sets, and saving the processed sets.
     """
 
-    def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
-                 output_train="benchmark/data/train_set_third_method.csv",
-                 output_test="benchmark/data/test_set_third_method.csv",
-                 output_val="benchmark/data/val_set_third_method.csv"):
-        """
-        Initialize the PrepareKGThirdMethod object.
-
-        Parameters:
-        - kg_path (str): The path to the knowledge graph file.
-        - output_nodes_map (str): The path to the output file containing node mappings.
-        - output_kg_edge_list (str): The path to the output file containing the knowledge graph edge list.
-        - output_train (str, optional): The path to save the training set. Defaults to "benchmark/data/train_set_third_method.csv".
-        - output_test (str, optional): The path to save the testing set. Defaults to "benchmark/data/test_set_third_method.csv".
-        - output_val (str, optional): The path to save the validation set. Defaults to "benchmark/data/val_set_third_method.csv".
-        """
-        super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val)
+    def __init__(self, kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val,
+                 output_type_to_entities):
+        super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val,
+                         output_type_to_entities)
+        self.kg_path = kg_path
+        self.output_nodes_map = output_nodes_map
+        self.output_kg_edge_list = output_kg_edge_list
+        self.output_train = output_train
+        self.output_test = output_test
+        self.output_val = output_val
+        self.output_type_to_entities = output_type_to_entities
 
     def get_unique_values(self, graph: DataFrame, column_name: str) -> list:
         """
@@ -113,7 +109,7 @@ class PrepareKGThirdMethod(PrepareKGSecondMethod):
             relation_train_test_splits[rel] = (train_set, test_set)
         return relation_train_test_splits
 
-    def concat_split_sets(self, relation_train_test_splits:dict) -> tuple:
+    def concat_split_sets(self, relation_train_test_splits: dict) -> tuple:
         """
         Concatenate the split sets for each relation type into one big dataframe per set type.
 
@@ -145,6 +141,11 @@ class PrepareKGThirdMethod(PrepareKGSecondMethod):
         splitting into train-test-validation sets, and saving the processed sets.
         """
         full_graph, new_nodes = self.generate_edgelist()
+        # Vérifiez les chemins de sauvegarde
+        print("kg path :", self.kg_path)
+        print("Output train path:", self.output_train)
+        print("Output test path:", self.output_test)
+        print("Output entities_to_type", self.output_type_to_entities)
 
         full_graph = self.expand_graph_relations(full_graph)
         print(f"FULL_GRAPH BEFORE SAVING:\n{full_graph}")
@@ -154,21 +155,29 @@ class PrepareKGThirdMethod(PrepareKGSecondMethod):
         rel_df = self.split_dataframe_based_on_relation(graph=full_graph, column_name="rel", unique_rel=unique_rel)
         dict_train_test_split = self.split_each_dataframe_into_train_test_val(relations_dict_dataframe=rel_df,
                                                                               random_state=3)
-
+        print(f"dict_train_test {dict_train_test_split} \n ")
         train_set, test_set = self.concat_split_sets(relation_train_test_splits=dict_train_test_split)
-
+        print(f"train_set after self.concat_split_sets() \n {train_set.head()}")
         train_set = self.remove_reverse_or_redundant_in_train(train_set=train_set, test_set=test_set)
-
+        print(f"train_set after remove_reverse_or_redundant_in_train() \n {train_set.head()}")
         # Change columns orders to suit pykeen
         test_set = self.organize_col(test_set)
         train_set = self.organize_col(train_set)
+
+        print(f"TRAIN SET : {train_set.head()}\n")
+        print(f"TEST SET {test_set.head()} \n")
+
         # Save train and test kg files
         self.save_train_test_val(train=train_set, test=test_set)
 
 
 if __name__ == "__main__":
     prepare_kg = PrepareKGThirdMethod(kg_path='benchmark/data/kg_giant_orphanet.csv',
-                           output_nodes_map="benchmark/data/KG_node_map_THIRD_METHOD.txt",
-                           output_kg_edge_list="benchmark/data/KG_edgelist_mask_THIRD_METHOD.txt")
+                                      output_train="benchmark/data/third_method/train_set_third_method.csv",
+                                      output_test="benchmark/data/third_method/test_set_third_method.csv",
+                                      output_val="benchmark/data/third_method/val_set_third_method.csv",
+                                      output_nodes_map="benchmark/data/third_method/KG_node_map_THIRD_METHOD.txt",
+                                      output_kg_edge_list="benchmark/data/third_method/KG_edgelist_mask_THIRD_METHOD.txt",
+                                      output_type_to_entities="benchmark/data/third_method/type_to_entities_third.csv")
 
     prepare_kg.main()

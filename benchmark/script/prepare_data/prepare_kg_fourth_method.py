@@ -35,22 +35,17 @@ class PrepareKGFourthMethod(PrepareKGThirdMethod):
         splitting into train-test-validation sets, and saving the processed sets.
     """
 
-    def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
-                 output_train="benchmark/data/train_set_fourth_method.csv",
-                 output_test="benchmark/data/test_set_fourth_method.csv",
-                 output_val="benchmark/data/val_set_fourth_method.csv"):
-        """
-        Initialize the PrepareKGFourthMethod object.
-
-        Parameters:
-        - kg_path (str): The path to the knowledge graph file.
-        - output_nodes_map (str): The path to the output file containing node mappings.
-        - output_kg_edge_list (str): The path to the output file containing the knowledge graph edge list.
-        - output_train (str, optional): The path to save the training set. Defaults to "benchmark/data/train_set_fourth_method.csv".
-        - output_test (str, optional): The path to save the testing set. Defaults to "benchmark/data/test_set_fourth_method.csv".
-        - output_val (str, optional): The path to save the validation set. Defaults to "benchmark/data/val_set_fourth_method.csv".
-        """
-        super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val)
+    def __init__(self, kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val,
+                 output_type_to_entities):
+        super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val,
+                         output_type_to_entities)
+        self.kg_path = kg_path
+        self.output_nodes_map = output_nodes_map
+        self.output_kg_edge_list = output_kg_edge_list
+        self.output_train = output_train
+        self.output_test = output_test
+        self.output_val = output_val
+        self.output_type_to_entities = output_type_to_entities
 
     def find_specific_relation(self, df: DataFrame, column: str, relations: Union[str, list]) -> tuple[
         DataFrame, DataFrame]:
@@ -121,6 +116,13 @@ class PrepareKGFourthMethod(PrepareKGThirdMethod):
         """
         full_graph, new_nodes = self.generate_edgelist()
 
+        # Vérifiez les chemins de sauvegarde
+        print("Output kg path: ", self.kg_path)
+        print("Output train path:", self.output_train)
+        print("Output test path:", self.output_test)
+
+
+
         full_graph = self.expand_graph_relations(full_graph)
         print(f"FULL_GRAPH BEFORE SAVING:\n{full_graph}")
         self.saving_dataframe(full_graph, new_nodes)
@@ -154,10 +156,13 @@ class PrepareKGFourthMethod(PrepareKGThirdMethod):
         # test_data = read_csv("benchmark/data/test_set_fourth_method.csv", sep="\t", low_memory=False)
 
 
-
 if __name__ == "__main__":
-    prepare_kg = PrepareKGFourthMethod(kg_path='benchmark/data/kg_giant_orphanet.csv',
-                           output_nodes_map="benchmark/data/KG_node_map_FOURTH_METHOD.txt",
-                           output_kg_edge_list="benchmark/data/KG_edgelist_mask_FOURTH_METHOD.txt")
+    prepare_kg = PrepareKGThirdMethod(kg_path='benchmark/data/kg_giant_orphanet.csv',
+                                      output_train="benchmark/data/fourth_method/train_set_fourth_method.csv",
+                                      output_test="benchmark/data/fourth_method/test_set_fourth_method.csv",
+                                      output_val="benchmark/data/fourth_method/val_set_fourth_method.csv",
+                                      output_nodes_map="benchmark/data/fourth_method/KG_node_map_fourth_METHOD.txt",
+                                      output_kg_edge_list="benchmark/data/fourth_method/KG_edgelist_mask_fourth_METHOD.txt",
+                                      output_type_to_entities="benchmark/data/fourth_method/type_to_entities_fourth.csv")
 
     prepare_kg.main()

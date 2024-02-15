@@ -43,9 +43,10 @@ class PrepareKGSecondMethod(PrepareKG):
     """
 
     def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
-                 output_train="benchmark/data/train_set_second_method.csv",
-                 output_test="benchmark/data/test_set_second_method.csv",
-                 output_val="benchmark/data/val_set_second_method.csv"):
+                 output_type_to_entities: str,
+                 output_train="benchmark/data/second_method/train_set_second_method.csv",
+                 output_test="benchmark/data/second_method/test_set_second_method.csv",
+                 output_val="benchmark/data/second_method/val_set_second_method.csv"):
         """
         Initialize the PrepareKGSecondMethod object.
 
@@ -57,7 +58,8 @@ class PrepareKGSecondMethod(PrepareKG):
         - output_test (str, optional): The path to save the testing set. Defaults to "benchmark/data/test_set_second_method.csv".
         - output_val (str, optional): The path to save the validation set. Defaults to "benchmark/data/val_set_second_method.csv".
         """
-        super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val)
+        super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val,
+                         output_type_to_entities )
 
     def find_reverse_to_remove(self, graph: DataFrame) -> DataFrame:
         """
@@ -146,6 +148,10 @@ class PrepareKGSecondMethod(PrepareKG):
         splitting into train-test-validation sets, and saving the processed sets.
         """
         full_graph, new_nodes = self.generate_edgelist()
+        # Vérifiez les chemins de sauvegarde
+        print("Output train path:", self.output_train)
+        print("Output test path:", self.output_test)
+
 
         full_graph = self.expand_graph_relations(full_graph)
         print(f"FULL_GRAPH BEFORE SAVING:\n{full_graph}")
@@ -163,7 +169,6 @@ class PrepareKGSecondMethod(PrepareKG):
         # Save train and test kg files
         self.save_train_test_val(train=train_set, test=test_set)
 
-
         proportion_rev_added, proportion_rev_not_added, proportion_false_rev = (
             self.calculate_reverse_relation_proportion(train, test))
         print(f"Proportion of reverse relation in test that got "
@@ -173,7 +178,8 @@ class PrepareKGSecondMethod(PrepareKG):
 
 if __name__ == "__main__":
     prepare_kg = PrepareKGSecondMethod(kg_path='benchmark/data/kg_giant_orphanet.csv',
-                           output_nodes_map="benchmark/data/KG_node_map_SECOND_METHOD.txt",
-                           output_kg_edge_list="benchmark/data/KG_edgelist_mask_SECOND_METHOD.txt")
+                           output_nodes_map="benchmark/data/second_method/KG_node_map_SECOND_METHOD.txt",
+                           output_kg_edge_list="benchmark/data/second_method/KG_edgelist_mask_SECOND_METHOD.txt",
+                                       output_type_to_entities="benchmark/data/second_method/type_to_entities_second_meth.csv")
 
     prepare_kg.main()

@@ -5,10 +5,12 @@ from prepare_kg import PrepareKG
 class PrepareKGFirstMethod(PrepareKG):
 
     def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
-                 output_train="benchmark/data/train_set_first_method.csv",
-                 output_test="benchmark/data/test_set_first_method.csv",
-                 output_val="benchmark/data/val_set_first_method.csv"):
-        super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val)
+                 output_type_to_entities,
+                 output_train="benchmark/data/first_method/train_set_first_method_modif.csv",
+                 output_test="benchmark/data/first_method/test_set_first_method_modif.csv",
+                 output_val="benchmark/data/first_method/val_set_first_method_modif.csv"):
+        super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val,
+                         output_type_to_entities)
 
     def find_reciprocal_relationships(self, graph: DataFrame) -> DataFrame:
         """
@@ -84,14 +86,14 @@ class PrepareKGFirstMethod(PrepareKG):
         """
         print(graph.columns)
         true_reverse = self.find_reciprocal_relationships(graph)
+        print(f"TRUE REVERSE HEREEEE \n{true_reverse}")
+        rev_edges = graph[["x_name", "x_type", "relation", "y_name", "y_type"]].copy()
 
-        rev_edges = graph[["x_idx", "x_type", "relation", "y_idx", "y_type"]].copy()
-
-        reverse_relations = true_reverse[["x_idx", "x_type", "relation", "y_idx", "y_type"]].copy()
+        reverse_relations = true_reverse[["x_name", "x_type", "relation", "y_name", "y_type"]].copy()
 
         # Comparez les lignes entre les deux DataFrames en utilisant merge avec l'option indicator=True
         merged = rev_edges.merge(reverse_relations, how='left', indicator=True)
-        merged.to_csv("benchmark/output/nerged.csv", sep="\t", index=False)
+        merged.to_csv("benchmark/output/merged.csv", sep="\t", index=False)
 
         # Sélectionnez les lignes qui ne sont présentes que dans tableau_1
         rev_edges_wo_true_rev = merged[merged['_merge'] == 'left_only']
@@ -101,7 +103,7 @@ class PrepareKGFirstMethod(PrepareKG):
         rev_edges_wo_true_rev = rev_edges_wo_true_rev.drop(columns=['_merge'])
 
         rev_edges = rev_edges_wo_true_rev
-        rev_edges.columns = ["y_idx", "y_type", "relation", "x_idx", "x_type"]
+        rev_edges.columns = ["y_name", "y_type", "relation", "x_name", "x_type"]
 
         rev_edge_eqtype = rev_edges.query('x_type == y_type')
 
@@ -114,8 +116,13 @@ class PrepareKGFirstMethod(PrepareKG):
 
     def main(self):
         full_graph, new_nodes = self.generate_edgelist()
+
+
+
         print("Starting to get reverse edges")
         rev_edges = self.add_reverse_edges(full_graph)
+        print(f"REV_EDGES {rev_edges}")
+
         full_graph = self.expand_graph_relations(full_graph, rev_edges)
         print(f"FULL_GRAPH BEFORE SAVING:\n{full_graph}")
         self.saving_dataframe(full_graph, new_nodes)
@@ -124,12 +131,12 @@ class PrepareKGFirstMethod(PrepareKG):
         # Change columns orders to suit pykeen
         test_set = self.organize_col(test_set)
         train_set = self.organize_col(train_set)
-        # Save train and test kg files
+         # Save train and test kg files
         self.save_train_test_val(train=train_set, test=test_set)
-
+        #
         print(f"TRAIN_SET HERE:\n{train_set}")
-
-
+        #
+        #
         proportion_rev_added, proportion_rev_not_added, proportion_false_rev = (
             self.calculate_reverse_relation_proportion(train_set, test_set))
         print(f"Proportion of reverse relation in test that got "
@@ -140,6 +147,7 @@ class PrepareKGFirstMethod(PrepareKG):
 
 if __name__ == "__main__":
     prepare_kg = PrepareKGFirstMethod(kg_path='benchmark/data/kg_giant_orphanet.csv',
-                           output_nodes_map="benchmark/data/KG_node_map_FIRST_METHOD.txt",
-                           output_kg_edge_list="benchmark/data/KG_edgelist_mask_FIRST_METHOD.txt")
+                           output_nodes_map="benchmark/data/first_method/KG_node_map_FIRST_METHOD_modif.txt",
+                           output_kg_edge_list="benchmark/data/first_method/KG_edgelist_mask_FIRST_METHOD_modif.txt",
+                           output_type_to_entities="benchmark/data/first_method/type_to_entities_first.csv")
     prepare_kg.main()

@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 class PrepareKG:
 
     def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
-                 output_train: str, output_test: str, output_val: str):
+                 output_train: str, output_test: str, output_val: str, output_type_to_entities: str):
         """
         Initialize the PrepareKG class with the provided paths for knowledge graph data and output files.
 
@@ -23,6 +23,7 @@ class PrepareKG:
         self.output_train = output_train
         self.output_test = output_test
         self.output_val = output_val
+        self.output_type_to_entities = output_type_to_entities
 
     def read_graph(self, path: str) -> DataFrame:
         """
@@ -162,13 +163,14 @@ class PrepareKG:
         - full_graph: DataFrame with merged edges and derived full relations.
         """
         if rev_edges is not None :
-            graph = concat((graph[["x_idx", "x_type", "y_idx", "y_type", "relation"]], rev_edges[
-                ["x_idx", "x_type", "y_idx", "y_type", "relation"]]))
+            graph = concat((graph[["x_name", "x_type", "y_name", "y_type", "relation"]], rev_edges[
+                ["x_name", "x_type", "y_name", "y_type", "relation"]]))
 
         full_graph = graph.drop_duplicates(ignore_index=True).reset_index()
-
+        entities_type_graph = full_graph[["x_name", "x_type", "y_name", "y_type"]]
+        entities_type_graph.to_csv(self.output_type_to_entities, sep="\t", index=False)
         full_graph["full_relation"] = full_graph["x_type"] + ";" + full_graph["relation"] + ";" + full_graph["y_type"]
-        full_graph = full_graph[["x_idx", "y_idx", "full_relation"]]
+        full_graph = full_graph[["x_name", "y_name", "full_relation"]]
         full_graph.columns = ["from", "to", "rel"]
         full_graph = full_graph.drop_duplicates(ignore_index=True).reset_index(drop=True)
 
