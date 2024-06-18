@@ -8,7 +8,7 @@ from pandas import DataFrame, read_csv, concat, merge
 class EmbeddingVisualizer:
 
     def __init__(self, model_path, entities_to_id, entities_to_type, save_path):
-        self.model = torch.load(model_path)
+        self.model = torch.load(model_path, map_location=torch.device('cpu'))
         self.entities_to_id = read_csv(entities_to_id, sep="\t")
         self.entities_to_type = read_csv(entities_to_type, sep="\t")
         self.entity_embedding = self.load_embedding_as_numpy_array()
@@ -32,13 +32,26 @@ class EmbeddingVisualizer:
         self.entities_to_type = concat([x_df, y_df], axis=0)
 
     def map_id_to_type(self) -> DataFrame:
+        # Convert 'label' column in entities_to_id to object type
+        self.entities_to_id['label'] = self.entities_to_id['label'].astype(str)
         df_merged = merge(self.entities_to_id, self.entities_to_type, on=["label"], how='left').drop_duplicates(
             ignore_index=True).reset_index()
         return df_merged[["id", "type"]].copy()
 
     def attribute_color_to_type(self, df_to_plot: DataFrame) -> dict:
         types = df_to_plot["type"].unique()
-        colors = ["red", "blue", "green", "orange", "purple", "cyan", "magenta", "yellow", "brown", "lime"]
+        colors = [
+    "#1f77b4",  # Bleu
+    "#ff7f0e",  # Orange
+    "#2ca02c",  # Vert
+    "#7f7f7f",  # Gris
+    "#9467bd",  # Violet
+    "#8c564b",  # Marron
+    "#e377c2",  # Rose
+    "#d62728",  # Rouge
+    "#bcbd22",  # Jaune vert
+    "#17becf"   # Cyan
+]
         return  dict(zip(types, colors))
 
     def df_to_dict(self, graph: DataFrame, col1: str, col2: str) -> dict:
@@ -57,9 +70,13 @@ class EmbeddingVisualizer:
                 ha="center", va="center",
                 fontsize=4,  # Adjust the font size
                 fontweight='bold',  # Make text bold
-                bbox=dict(boxstyle="round,pad=0.3", fc=type_to_color[dict_id_type[entity]],
+                bbox=dict(boxstyle="round,pad=0.9", fc=type_to_color[dict_id_type[entity]],
                           ec=type_to_color[dict_id_type[entity]], lw=1),  # Add a rounded box around text
             )
+
+        # Set limits for x and y axes
+        ax.set_xlim(-1, 1)
+        ax.set_ylim(-1, 1)
 
         # Add legend
         legend_handles = []
@@ -67,16 +84,19 @@ class EmbeddingVisualizer:
             legend_handles.append(
                 plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8, label=type_))
 
-        ax.legend(handles=legend_handles, loc='upper right')
+        ax.legend(handles=legend_handles, loc='upper right', fontsize=20)
 
         # Customize plot aesthetics
         ax.set_aspect('equal', 'box')  # Ensure aspect ratio is equal
-        ax.grid(True, linestyle='--', alpha=0.6)  # Add grid lines
         ax.set_title('Embedding representation', fontsize=14)  # Title of the plot
 
         # Remove the axis spines
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
+
+        # Add frame around the plot
+        rect = plt.Rectangle((1, 1), -2, -2, linewidth=1, edgecolor='black', facecolor='none')
+        ax.add_patch(rect)
 
         # Save the plot
         plt.savefig(self.save_path)
@@ -91,7 +111,9 @@ class EmbeddingVisualizer:
         df_to_plot = self.map_id_to_type()
         dict_type_color = self.attribute_color_to_type(df_to_plot)
         dict_id_type = self.df_to_dict(graph=df_to_plot, col1="id", col2="type")
-        self.plot_fig_embedding(dict_id_type=dict_id_type, type_to_color=dict_type_color, entity_embedding_pca=entity_embedding_pca)
+        self.plot_fig_embedding(dict_id_type=dict_id_type, type_to_color=dict_type_color,
+                                entity_embedding_pca=entity_embedding_pca)
+
 
 if __name__=="__main__":
 

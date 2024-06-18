@@ -1,6 +1,6 @@
 from pandas import DataFrame, merge
 from prepare_kg import PrepareKG
-
+import argparse
 
 class PrepareKGSecondMethod(PrepareKG):
     """
@@ -42,11 +42,7 @@ class PrepareKGSecondMethod(PrepareKG):
         splitting into train-test-validation sets, and saving the processed sets.
     """
 
-    def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
-                 output_type_to_entities: str,
-                 output_train="benchmark/data/second_method/train_set_second_method.csv",
-                 output_test="benchmark/data/second_method/test_set_second_method.csv",
-                 output_val="benchmark/data/second_method/val_set_second_method.csv"):
+    def __init__(self, kg_path: str, output_folder: str):
         """
         Initialize the PrepareKGSecondMethod object.
 
@@ -58,8 +54,7 @@ class PrepareKGSecondMethod(PrepareKG):
         - output_test (str, optional): The path to save the testing set. Defaults to "benchmark/data/test_set_second_method.csv".
         - output_val (str, optional): The path to save the validation set. Defaults to "benchmark/data/val_set_second_method.csv".
         """
-        super().__init__(kg_path, output_nodes_map, output_kg_edge_list, output_train, output_test, output_val,
-                         output_type_to_entities )
+        super().__init__(kg_path, output_folder)
 
     def find_reverse_to_remove(self, graph: DataFrame) -> DataFrame:
         """
@@ -71,9 +66,10 @@ class PrepareKGSecondMethod(PrepareKG):
         Returns:
         - DataFrame: DataFrame containing reverse relations to be removed.
         """
-        merged_df = merge(graph, graph, left_on=['from', 'to'], right_on=['to', 'from'], suffixes=('_first', '_reverse'))
+        merged_df = merge(graph, graph, left_on=['from', 'to'], right_on=['to', 'from'],
+                          suffixes=('_first', '_reverse'))
         reverse_to_remove = merged_df[['from_reverse', 'to_reverse', 'rel_reverse']].copy()
-        reverse_to_remove.columns = ['from','to','rel']
+        reverse_to_remove.columns = ['from', 'to', 'rel']
         return reverse_to_remove
 
     def remove_reverse_relation(self, graph: DataFrame) -> DataFrame:
@@ -112,7 +108,6 @@ class PrepareKGSecondMethod(PrepareKG):
         redundant_relations.columns = ['from', 'to', 'rel']
         return redundant_relations
 
-
     def remove_redundant_relation(self, graph: DataFrame) -> DataFrame:
         """
         Remove redundant relations from the graph.
@@ -125,7 +120,8 @@ class PrepareKGSecondMethod(PrepareKG):
         """
         redundant_to_remove = self.find_redundant_relation(graph)
         graph_wo_redundant = graph[
-            ~graph.set_index(['from', 'to', 'rel']).index.isin(redundant_to_remove.set_index(['from', 'to', 'rel']).index)]
+            ~graph.set_index(['from', 'to', 'rel']).index.isin(
+                redundant_to_remove.set_index(['from', 'to', 'rel']).index)]
 
         return graph_wo_redundant
 
@@ -152,7 +148,6 @@ class PrepareKGSecondMethod(PrepareKG):
         print("Output train path:", self.output_train)
         print("Output test path:", self.output_test)
 
-
         full_graph = self.expand_graph_relations(full_graph)
         print(f"FULL_GRAPH BEFORE SAVING:\n{full_graph}")
         self.saving_dataframe(full_graph, new_nodes)
@@ -176,10 +171,14 @@ class PrepareKGSecondMethod(PrepareKG):
               f"Proportion of reverse relation that where already in the data: {proportion_rev_not_added}%\n"
               f"Proportion in test set of reverse relation with different relation name: {proportion_false_rev}%")
 
+
 if __name__ == "__main__":
-    prepare_kg = PrepareKGSecondMethod(kg_path='benchmark/data/kg_giant_orphanet.csv',
-                           output_nodes_map="benchmark/data/second_method/KG_node_map_SECOND_METHOD.txt",
-                           output_kg_edge_list="benchmark/data/second_method/KG_edgelist_mask_SECOND_METHOD.txt",
-                                       output_type_to_entities="benchmark/data/second_method/type_to_entities_second_meth.csv")
+    parser = argparse.ArgumentParser(description="Prepare kg data with the second method of our benchmark")
+    parser.add_argument("--input", type=str, help="Path to the kg")
+    parser.add_argument("--output", type=str, help="Path to output folder.")
+    args = parser.parse_args()
+
+    prepare_kg = PrepareKGSecondMethod(kg_path=args.input,
+                                       output_folder=args.output)
 
     prepare_kg.main()

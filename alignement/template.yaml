@@ -1,0 +1,227 @@
+
+## fb15k-237 embeddings
+
+# fb embedding structure (pre-trained TransE embeddings)
+- TripleEmbedder:
+    id: embedder-disease
+    head_embedding:
+        Embedding:
+            id: entities-disease
+            n_items: 21449
+            embedding_dim: 110
+    pred_embedding:
+        Embedding:
+            n_items: 22
+            embedding_dim: 110
+    tail_embedding: ref:entities-disease
+
+# load pre-trained fb embeddings
+- Loader:
+    # initialize the fb embeddings
+    what: ref:embedder-disease
+    # load pre-trained embeddings from the following file
+    source: data/fedcoder_prep/disease/model.pt
+
+
+
+
+## wd15k-237 embeddings
+
+# wd embedding structure (pre-trained TransE embeddings)
+- TripleEmbedder:
+    id: embedder-drug
+    head_embedding:
+        Embedding:
+            id: entities-drug
+            n_items: 21617
+            embedding_dim: 110
+    pred_embedding:
+        Embedding:
+            n_items: 20
+            embedding_dim: 110
+    tail_embedding: ref:entities-drug
+
+# load pre-trained wd embeddings
+- Loader:
+    # initialize the wd embeddings
+    what: ref:embedder-drug
+    # load pre-trained embeddings from the following file
+    source: data/fedcoder_prep/drug/model.pt
+
+
+
+
+## training and testing data definitions
+
+- Data:
+    id: data-train
+    train:
+        AlignmentTrainDataset:
+            paths:
+                left: data/fedcoder_prep/disease/vocab.json
+                right: data/fedcoder_prep/drug/vocab.json
+                train: data/fedcoder_prep/train.csv
+            n_neg_left: 1000
+            n_neg_right: 1000
+
+- Data:
+    id: data-test
+    test:
+        AlignmentTestDataset:
+            paths: 
+                left: data/fedcoder_prep/disease/vocab.json
+                right: data/fedcoder_prep/drug/vocab.json
+                test: data/fedcoder_prep/test.csv
+            case: test
+            
+## FedCoder layers
+
+# encoder/decoder layers for the left KG
+- EncoderDecoder:
+    id: encdec-disease
+    encoder:
+        Linear:
+            id: encoder-disease
+            input_dim: ref:entities-disease.embedding_dim
+            # we set the latent representation size to 128
+            output_dim: 220
+            bias: True
+            init: identity
+            activation: linear
+    decoder:
+        Linear:
+            # the input size matches the latent representation
+            input_dim: ref:encoder-disease.output_dim
+            output_dim: ref:entities-disease.embedding_dim
+            bias: True
+            init: identity
+            activation: linear
+
+# encoder/decoder layers for the right KG
+- EncoderDecoder:
+    id: encdec-drug
+    encoder:
+        Linear:
+            id: encoder-drug
+            input_dim: ref:entities-drug.embedding_dim
+            # we re-use the same latent space dimension as before
+            output_dim: ref:encoder-disease.output_dim
+            bias: True
+            init: identity
+            activation: linear
+    decoder:
+        Linear:
+            input_dim: ref:encoder-disease.output_dim
+            output_dim: ref:entities-drug.embedding_dim
+            bias: True
+            init: identity
+            activation: linear
+
+
+- AlignmentPackage:
+    id: pkg-align-train
+    data: ref:data-train
+    embedder:
+        # use the entity embeddings from the respective KG as input
+        AlignmentEmbedder:
+            id: align-input
+            left_embedding: ref:entities-disease
+            right_embedding: ref:entities-drug
+    score:
+        Twosided:
+            id: align-score
+            # constrain the latent representation
+            # (embeddings after the respective encoder) 
+            # of linked entities to be close.
+            left: ref:encoder-disease
+            right: ref:encoder-drug
+            # measure closeness via the euclidean distance
+            distance: euclid
+    loss:
+        SigmoidLoss:
+            id: align-loss
+            gamma: 24
+    regularizer_left:
+        Autoencoder:
+            layer: ref:encdec-disease
+            data:
+                BatchedMappedData:
+                    data: ref:data-train.train._vocab_left
+                    mapping: ref:entities-disease
+    regularizer_right:
+        Autoencoder:
+            layer: ref:encdec-drug
+            data:
+                BatchedMappedData:
+                    data: ref:data-train.train._vocab_right
+                    mapping: ref:entities-drug
+
+
+- Checkpoint:
+    id: ckpt
+    # save every 100 epochs
+    every: 100
+    # keep only the last checkpoint
+    keep: 1
+    modules:
+        - Periodic:
+            # save en's encoder/decoder layers
+            what: ref:encdec-disease
+            # save as ckpt-left
+            name: ckpt-disease
+        - Periodic:
+            # save fr's encoder/decoder layers
+            what: ref:encdec-drug
+            # save as ckpt-right
+            name: ckpt-drug
+
+## Evaluation setup
+
+- AlignmentPackage:
+    id: pkg-align-test
+    data: ref:data-test
+    # for evaluation, we use the same model, score,
+    # and loss as defined for training
+    embedder: ref:align-input
+    score: ref:align-score
+    loss: ref:align-loss
+
+
+
+## Job
+
+- Job:
+    trainer:
+        RetroAlignTrainer:
+            learning_rate: 0.01
+            alignments:
+                - AlignmentLearner:
+                    package: ref:pkg-align-train
+                    rcoeff_left: 0.1
+                    rcoeff_right: 0.1
+
+    # regularly evaluate the alignment performance
+    evaluate:
+        Evaluator:
+            # evaluate every 100 epochs
+            every: 50
+            tasks:
+                - Periodic:
+                    # use "align" as result identifier
+                    name: align
+                    # evaluate the alignment performance
+                    what:
+                        OnesidedAlignment:
+                            package: ref:pkg-align-test
+                            # evaluate on the test set
+                            testset: test
+                            # compute MR, HITS, and MRR metrics
+                            metrics:
+                                - HITS@10
+                                - HITS@5
+                                - HITS@3
+                                - HITS@1
+                                - MR
+                                - MRR            
+            
+

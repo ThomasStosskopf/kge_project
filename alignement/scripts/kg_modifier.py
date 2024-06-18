@@ -99,17 +99,18 @@ if __name__ == "__main__":
                         "disease_phenotype_positive", "disease_protein", "disease_disease", "exposure_disease"]
     list_drugs_rel = ["contraindication", "drug_drug", "indication", "off-label use", "drug_protein", "drug_effect"]
 
-    remove_drugs_rel = KgModifier(kg_path="/home/thomas/Documents/projects/kge_project/benchmark/data/random_100m/kg.csv",
-                             output_path="alignement/data/disease_kg.csv",
-                             relations=list_drugs_rel)
+    kg_path = "/home/thomas/Documents/projects/kge_project/benchmark/data/kg_giant_orphanet.csv"
+
+    remove_drugs_rel = KgModifier(
+        kg_path=kg_path,
+        output_path="alignement/data/split_kg/disease_kg.csv",
+        relations=list_drugs_rel)
     kg = remove_drugs_rel.get_kg()
     remove_drugs_rel.main()
 
-    remove_diseases_rel = KgModifier(kg_path="/home/thomas/Documents/projects/kge_project/benchmark/data/random_100m/kg.csv",
-                             output_path="alignement/data/drugs_kg.csv",
-                             relations=list_disease_rel)
+    remove_diseases_rel = KgModifier(
+        kg_path=kg_path,
+        output_path="alignement/data/split_kg/drugs_kg.csv",
+        relations=list_disease_rel)
 
     remove_diseases_rel.main()
-
-
-

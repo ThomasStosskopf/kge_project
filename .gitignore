@@ -1,2 +1,11 @@
 /benchmark/data/
 /benchmark/output/
+/alignement/data/
+/benchmark/output_2/
+/fedcoder/examples/
+/fedcoder/data/
+/kge/data/
+/kge/examples/
+/kge/tests/data/
+/testing_triples/
+/alignement/output/

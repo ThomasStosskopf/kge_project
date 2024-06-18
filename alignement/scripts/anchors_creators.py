@@ -2,6 +2,8 @@ from pathlib import Path
 from pandas import read_csv, DataFrame
 from sklearn.model_selection import train_test_split
 import argparse
+import os
+
 
 class AnchorsCreator:
 
@@ -38,14 +40,15 @@ class AnchorsCreator:
         self.test.to_csv(self.path.joinpath("test.csv"), sep=",", index=False, header=False)
         if self.val is not None:
             self.val.to_csv(self.path.joinpath("val.csv"), sep=",", index=False, header=False)
-
+        self.drug_entity_id["id"].to_csv(self.path.joinpath("drug/vocab.json"), index=False, header=False)
+        self.disease_entity_id["id"].to_csv(self.path.joinpath("disease/vocab.json"), index=False, header=False)
 
 if __name__ == "__main__":
-    input_path = "alignement/data/fedcoder_prep/"
 
     parser = argparse.ArgumentParser(description="Prepare the split data ")
     parser.add_argument("--input", type=str, help="Path to the trained model folder")
     args = parser.parse_args()
 
     anchors_creator = AnchorsCreator(path=args.input)
+    print(anchors_creator.disease_entity_id)
     anchors_creator.save_train_test_val()

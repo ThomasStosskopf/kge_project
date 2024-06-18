@@ -3,12 +3,12 @@ from pandas import concat, merge, read_csv, DataFrame
 from igraph import Graph
 from collections import Counter
 from sklearn.model_selection import train_test_split
-
+from pathlib import Path
+import os
 
 class PrepareKG:
 
-    def __init__(self, kg_path: str, output_nodes_map: str, output_kg_edge_list: str,
-                 output_train: str, output_test: str, output_val: str, output_type_to_entities: str):
+    def __init__(self, kg_path: str, output_folder: str):
         """
         Initialize the PrepareKG class with the provided paths for knowledge graph data and output files.
 
@@ -18,12 +18,16 @@ class PrepareKG:
         - output_kg_edge_list (str): The file path to save the knowledge graph edge list data.
         """
         self.kg = self.read_graph(kg_path)
-        self.output_nodes_map = output_nodes_map
-        self.output_kg_edge_list = output_kg_edge_list
-        self.output_train = output_train
-        self.output_test = output_test
-        self.output_val = output_val
-        self.output_type_to_entities = output_type_to_entities
+
+        self.output_path = Path(output_folder)
+        if not self.output_path.exists():
+            self.output_path.mkdir()
+        self.output_nodes_map = self.output_path.joinpath("KG_node_map.txt")
+        self.output_kg_edge_list = self.output_path.joinpath("KG_edge_list.txt")
+        self.output_train = self.output_path.joinpath("train.txt")
+        self.output_test = self.output_path.joinpath("test.txt")
+        self.output_val = self.output_path.joinpath("valid.txt")
+        self.output_type_to_entities = self.output_path.joinpath("type_to_entities.csv")
 
     def read_graph(self, path: str) -> DataFrame:
         """
