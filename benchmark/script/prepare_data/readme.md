@@ -18,3 +18,13 @@ output_folder = 'path/to/output_folder'
 
 prepare_kg = PrepareKG(kg_path=kg_path, output_folder=output_folder)'''
 
+### Output Files
+
+The processed data is saved in the following files:
+
+    KG_node_map.txt: Mapping of nodes with their unique indices.
+    KG_edge_list.txt: Edge list of the knowledge graph.
+    train.txt: Training set.
+    test.txt: Testing set.
+    valid.txt: Validation set (if applicable).
+    type_to_entities.csv: Mapping of node types to entities.
