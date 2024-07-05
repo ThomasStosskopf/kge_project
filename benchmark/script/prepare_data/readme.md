@@ -28,3 +28,20 @@ The processed data is saved in the following files:
     test.txt: Testing set.
     valid.txt: Validation set (if applicable).
     type_to_entities.csv: Mapping of node types to entities.
+
+The prepare_kg_first_method.py used all function defined by the SHEPHERD. 
+
+## Second approach
+
+The second approach do not add reverse relation in the graph. But it is an other extension of the PrepareKG class. 
+
+## Third approach
+
+The Third approach is an extension of the PrepareKGSecondMethod class. 
+We preprocess the data the same until we have to split the data. WIth the third approach we split the data 80/20 per type of relation in the KG. 
+
+## Fourth approach
+
+The Fourth approach is an extension of the PrepareKGThirdMethod class.
+We preprocess data same as before but hide a chosen relation in the training dataset. 
+
