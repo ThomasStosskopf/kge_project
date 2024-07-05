@@ -11,3 +11,8 @@ In the "scripts" folder there is three folders:
 
 - evaluation_script: in this folder there is 4 scripts. metric_finder.py and table_maker.py are used together to evaluate a KGE models on all the relation type of the KG and then make two tables one with the hits@10 table and one with the MRR table.
 
+## Usage
+
+### run a model: 
+
+    python benchmark/script/kge_models/pipeline_embedding.py --input_folder alignement/data/essaie_05_avril/split_kg/drug_prep_data/ --output alignement/data/essaie_05_avril/output_drug/ --model distmult epochs 4 emb_dim 128
