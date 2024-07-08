@@ -13,6 +13,14 @@ In the "scripts" folder there is three folders:
 
 ## Usage
 
+### Prepare data:
+
+    python3 benchmark/script/prepare_data/prepare_kg_third_method.py --input kg_giant_orphanet.csv  --output /benchmark/data/third_approach
+
 ### run a model: 
 
-    python benchmark/script/kge_models/pipeline_embedding.py --input_folder alignement/data/essaie_05_avril/split_kg/drug_prep_data/ --output alignement/data/essaie_05_avril/output_drug/ --model distmult epochs 4 emb_dim 128
+    python3 benchmark/script/pipeline_embedding.py --train benchmark/data/third_method/train_set_third_method.csv --test benchmark/data/third_method/test_set_third_method.csv --output benchmark/output/output_third_method/ --model distmult --epochs 100 --batch_size 256 --emb_size 128 --learning_rate 0.0001
+
+### Evaluate on specific relation
+
+    python3 
