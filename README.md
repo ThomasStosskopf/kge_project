@@ -19,7 +19,7 @@ In the "scripts" folder there is three folders:
 
 ### run a model: 
 
-    python3 benchmark/script/pipeline_embedding.py --train benchmark/data/third_method/train_set_third_method.csv --test benchmark/data/third_method/test_set_third_method.csv --output benchmark/output/output_third_method/ --model distmult --epochs 100 --batch_size 256 --emb_size 128 --learning_rate 0.0001
+    python3 benchmark/script/kge_models/pipeline_embedding.py --train benchmark/data/third_method/train_set_third_method.csv --test benchmark/data/third_method/test_set_third_method.csv --output benchmark/output/output_third_method/ --model distmult --epochs 100 --batch_size 256 --emb_size 128 --learning_rate 0.0001
 
 ### Evaluate on specific relation
 
