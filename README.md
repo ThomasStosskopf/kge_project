@@ -23,4 +23,9 @@ In the "scripts" folder there is three folders:
 
 ### Evaluate on specific relation
 
-    python3 
+    python3 benchmark/evaluation_script/table_maker.py --input_path benchmark/output/models_to_eval
+
+
+The folder 'model_to_eval' should be the folder where the user put all the different folder containing trained models and their files.
+The script will find each trained models and iterate through all the relation to evaluate the hits@10 score and mrr score for each relation type. 
+
